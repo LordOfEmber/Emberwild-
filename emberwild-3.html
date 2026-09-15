@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en" data-server="goats">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survivor Network — The Goats & Dragon Island</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&family=Pirata+One&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#121613;
+    --bg-panel:#1a201c;
+    --bg-panel-2:#1f2622;
+    --ink:#e9e3d3;
+    --ink-dim:#8fa093;
+    --ink-faint:#5e6b62;
+    --line:#2b332d;
+    --line-bright:#3a453d;
+
+    --accent:#8fae5e;
+    --accent-bright:#a9cc78;
+    --accent-soft:rgba(143,174,94,.16);
+  }
+  html[data-server="dragon"]{
+    --accent:#8a5cf0;
+    --accent-bright:#a97dff;
+    --accent-soft:rgba(138,92,240,.18);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg-deep);
+    color:var(--ink);
+    font-family:'Work Sans', sans-serif;
+    font-size:16px;
+    line-height:1.5;
+  }
+  h1,h2,h3{ font-family:'Bitter', serif; font-weight:700; letter-spacing:-0.01em; }
+  a{ color:inherit; text-decoration:none; }
+
+  /* ---------- Top bar ---------- */
+  .topbar{ background:var(--bg-panel); border-bottom:1px solid var(--line); position:sticky; top:0; z-index:20; }
+  .topbar-inner{ max-width:1180px; margin:0 auto; padding:14px 20px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .logo{ display:flex; align-items:center; gap:10px; font-family:'Bitter', serif; font-weight:800; font-size:19px; }
+  .logo-mark{
+    width:54px; height:38px; transition:transform .2s ease, filter .2s ease;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; background:transparent; border:none;
+    position:relative;
+  }
+  .logo-mark:hover{ transform:scale(1.06); filter:drop-shadow(0 0 6px var(--accent-soft)); }
+  .logo-mark svg{ width:54px; height:38px; display:block; position:relative; z-index:2; }
+  .logo-mark::after{
+    content:''; position:absolute; inset:-9px; border-radius:50%;
+    background:radial-gradient(circle, var(--accent-soft), transparent 70%);
+    filter:blur(5px); z-index:0; animation:logo-glow-pulse 2.1s ease-in-out infinite;
+  }
+  @keyframes logo-glow-pulse{
+    0%,100%{ opacity:.7; transform:scale(1); }
+    50%{ opacity:1; transform:scale(1.12); }
+  }
+  .flame{
+    position:absolute; bottom:2px; width:13px; height:22px; z-index:1;
+    border-radius:50% 50% 50% 50% / 62% 62% 38% 38%;
+    filter:blur(2.5px); mix-blend-mode:screen; opacity:.85;
+    background:radial-gradient(circle at 50% 82%, #fff8, var(--accent-bright) 45%, var(--accent) 75%, transparent 100%);
+  }
+  .flame1{ left:4px; animation:flame-flicker 1.05s ease-in-out infinite; height:20px; }
+  .flame2{ left:20px; animation:flame-flicker 0.85s ease-in-out infinite .25s; height:27px; }
+  .flame3{ left:35px; animation:flame-flicker 1.25s ease-in-out infinite .45s; height:18px; }
+  @keyframes flame-flicker{
+    0%,100%{ transform:scaleY(1) scaleX(1) skewX(0deg) translateY(0); opacity:.8; }
+    30%{ transform:scaleY(1.18) scaleX(.88) skewX(-5deg) translateY(-2px); opacity:1; }
+    60%{ transform:scaleY(.88) scaleX(1.08) skewX(4deg) translateY(1px); opacity:.65; }
+  }
+
+  /* ---------- Mod vote modal ---------- */
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background:rgba(8,10,9,.72);
+    z-index:100; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay.open{ display:flex; }
+  .modal-box{
+    background:var(--bg-panel); border:1px solid var(--line-bright); border-radius:8px;
+    max-width:520px; width:100%; max-height:85vh; overflow-y:auto;
+    padding:28px 24px;
+  }
+  .modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .modal-head h3{ font-size:20px; }
+  .modal-close{
+    background:none; border:1px solid var(--line-bright); color:var(--ink-dim);
+    width:28px; height:28px; border-radius:4px; cursor:pointer; font-size:15px; line-height:1;
+  }
+  .modal-close:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  .modal-sub{ color:var(--ink-dim); font-size:13.5px; margin-bottom:22px; }
+
+  .mod-card{
+    display:flex; gap:14px; border:1px solid var(--line); border-radius:6px; padding:16px;
+    margin-bottom:12px; background:var(--bg-panel-2); position:relative; overflow:hidden;
+  }
+  .mod-card::before{
+    content:''; position:absolute; top:0; left:0; bottom:0; width:3px; background:var(--mod-color, var(--accent));
+  }
+  .mod-thumb{
+    flex:0 0 auto; width:52px; height:52px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; font-size:24px;
+    background:radial-gradient(circle at 30% 25%, var(--mod-color, var(--accent)) 0%, var(--bg-panel) 75%);
+    box-shadow:0 3px 10px rgba(0,0,0,.35);
+  }
+  .mod-body{ flex:1; min-width:0; }
+  .mod-card h4{ font-size:15.5px; margin-bottom:3px; }
+  .mod-card .mod-author{ font-size:11px; color:var(--ink-faint); margin-bottom:6px; }
+  .mod-rating{ display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+  .mod-rating .stars{ color:#ffd76a; font-size:12px; letter-spacing:1px; }
+  .mod-rating .rlabel{ font-size:10.5px; color:var(--ink-faint); }
+  .mod-card p{ font-size:12.5px; color:var(--ink-dim); line-height:1.55; margin-bottom:12px; }
+  .mod-vote-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .mod-vote-btn{
+    background:var(--accent); color:#101410; border:none; padding:8px 16px;
+    border-radius:3px; font-weight:600; font-size:12.5px; cursor:pointer;
+    font-family:'Bitter', serif;
+  }
+  .mod-vote-btn:hover{ background:var(--accent-bright); }
+  .mod-vote-btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .mod-vote-count{ font-size:12.5px; color:var(--ink-faint); }
+  .mod-vote-count strong{ color:var(--ink); font-family:'Bitter', serif; }
+  .mod-vote-bar{ height:4px; border-radius:3px; background:var(--line); overflow:hidden; margin-top:8px; }
+  .mod-vote-bar-fill{ height:100%; background:var(--mod-color, var(--accent)); transition:width .4s ease; }
+  .modal-note{ font-size:11.5px; color:var(--ink-faint); margin-top:8px; text-align:center; }
+
+  /* ---------- Admin mode ---------- */
+  .admin-toggle{
+    display:inline-block; margin-top:14px; font-size:11.5px; color:var(--ink-faint);
+    cursor:pointer; text-decoration:underline; text-underline-offset:2px;
+  }
+  .admin-toggle:hover{ color:var(--ink-dim); }
+  .admin-panel{ display:none; margin-top:12px; }
+  .admin-panel.open{ display:block; }
+  .admin-input-row{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+  .admin-input{
+    background:var(--bg-panel-2); border:1px solid var(--line-bright); color:var(--ink);
+    padding:9px 12px; border-radius:3px; font-size:13px; width:160px;
+  }
+  .admin-input:focus{ outline:none; border-color:var(--accent); }
+  .admin-submit-btn{
+    background:var(--bg-panel-2); border:1px solid var(--line-bright); color:var(--ink-dim);
+    padding:9px 16px; border-radius:3px; font-size:12.5px; cursor:pointer; font-weight:600;
+  }
+  .admin-submit-btn:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  .admin-status{ margin-top:10px; font-size:12px; min-height:16px; }
+
+  .admin-animal-panel{
+    display:none; margin-top:14px; padding-top:14px; border-top:1px solid var(--line);
+    grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:8px;
+  }
+  .admin-animal-panel.show{ display:grid; }
+  .admin-animal-btn{
+    background:var(--bg-panel-2); border:1px solid var(--line-bright); color:var(--ink-dim);
+    border-radius:5px; padding:8px 6px; font-size:11px; cursor:pointer; text-align:center;
+  }
+  .admin-animal-btn:hover{ border-color:var(--accent); color:var(--ink); }
+  .admin-animal-btn .ic{ font-size:18px; display:block; margin-bottom:3px; }
+
+  .token-balance{
+    display:inline-flex; align-items:center; gap:6px; margin-bottom:18px;
+    background:var(--bg-panel-2); border:1px solid var(--line-bright); border-radius:20px;
+    padding:6px 16px; font-size:13px; color:var(--ink-dim);
+  }
+  .token-balance strong{ color:#ffd76a; font-family:'Bitter', serif; font-size:15px; }
+
+  .roll-btn-row{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .token-roll-btn{
+    background:var(--bg-panel-2); border:1px solid #ffd76a; color:#ffd76a;
+    padding:14px 22px; border-radius:4px; font-weight:700; font-size:14px; cursor:pointer;
+    font-family:'Bitter', serif;
+  }
+  .token-roll-btn:hover{ background:rgba(255,215,106,.1); }
+  .token-roll-btn:disabled{ opacity:.4; cursor:not-allowed; border-color:var(--line-bright); color:var(--ink-faint); }
+
+  .screenshot-btn{
+    display:block; margin:16px auto 0; background:none; border:1px solid var(--line-bright);
+    color:var(--ink-dim); padding:9px 18px; border-radius:20px; font-size:12.5px; cursor:pointer;
+  }
+  .screenshot-btn:hover{ color:var(--ink); border-color:var(--ink-dim); }
+
+  .daily-rewards{ margin-top:26px; padding-top:20px; border-top:1px solid var(--line); }
+  .daily-head{ font-size:13px; color:var(--ink-dim); font-weight:600; margin-bottom:12px; }
+  .daily-row{ display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; }
+  .daily-day{
+    background:var(--bg-panel-2); border:1px solid var(--line-bright); border-radius:5px;
+    padding:8px 2px; text-align:center; font-size:10px; color:var(--ink-faint);
+  }
+  .daily-day.claimed{ border-color:var(--accent); color:var(--accent-bright); }
+  .daily-day.today{ border-color:#ffd76a; box-shadow:0 0 0 1px #ffd76a; }
+  .daily-day .d-num{ display:block; font-size:9px; margin-bottom:4px; }
+  .daily-day .d-amt{ display:block; font-family:'Bitter', serif; font-weight:700; font-size:12px; color:var(--ink); }
+  .daily-day button{
+    margin-top:5px; width:100%; background:var(--accent); color:#101410; border:none;
+    padding:4px 0; border-radius:3px; font-size:9.5px; font-weight:700; cursor:pointer;
+  }
+  .daily-day button:disabled{ background:var(--line-bright); color:var(--ink-faint); cursor:not-allowed; }
+
+  .btn{ padding:9px 18px; border-radius:2px; font-size:13.5px; font-weight:600; display:inline-block; cursor:pointer; border:1px solid transparent; }
+  .btn-accent{ background:var(--accent); color:#101410; transition:background .4s ease; }
+  .btn-accent:hover{ background:var(--accent-bright); }
+  .btn-ghost{ color:var(--ink-dim); border-color:var(--line-bright); }
+  .btn-ghost:hover{ color:var(--ink); border-color:var(--ink-dim); }
+  .btn-lg{ padding:13px 24px; font-size:14.5px; }
+
+  .discord-icon{ display:inline-flex; align-items:center; gap:8px; }
+
+  .mascot-wrap{
+    width:44px; height:40px; display:block; cursor:grab;
+    transition:transform .2s ease;
+    position:fixed; top:14px; right:20px; z-index:150;
+    touch-action:none; user-select:none;
+  }
+  .mascot-wrap:hover{ transform:scale(1.08); }
+  .mascot-wrap.dragging{ cursor:grabbing; transition:none; transform:scale(1.15); filter:drop-shadow(0 6px 14px rgba(0,0,0,.5)); }
+  .mascot{ position:absolute; inset:0; opacity:0; pointer-events:none; transition:opacity .3s ease; }
+  .mascot svg{ width:100%; height:100%; overflow:visible; position:relative; z-index:1; }
+
+  html[data-server="goats"] .goat-mascot{ opacity:1; }
+  html[data-server="dragon"] .dragon-mascot{ opacity:1; }
+
+  .goat-mascot svg{ transform-origin:50% 90%; animation:dragon-sway 3.4s ease-in-out infinite; }
+  .dragon-mascot svg{ transform-origin:50% 90%; animation:dragon-sway 3.4s ease-in-out infinite; }
+  @keyframes dragon-sway{
+    0%, 100%{ transform:rotate(0deg); }
+    50%{ transform:rotate(2.5deg); }
+  }
+  .mascot .smoke{
+    position:absolute; width:5px; height:5px; border-radius:50%;
+    background:rgba(210,220,200,.55); bottom:28%; opacity:0;
+  }
+  html[data-server="dragon"] .mascot .smoke{ background:rgba(200,190,220,.55); }
+  .mascot .s1{ left:34%; animation:smoke-rise 2.4s ease-in infinite; }
+  .mascot .s2{ left:60%; animation:smoke-rise 2.4s ease-in infinite 0.8s; }
+  .mascot .s3{ left:47%; animation:smoke-rise 2.4s ease-in infinite 1.6s; }
+  @keyframes smoke-rise{
+    0%{ opacity:0; transform:translateY(0) scale(.5); }
+    20%{ opacity:.7; }
+    100%{ opacity:0; transform:translateY(-22px) scale(1.6); }
+  }
+
+  /* ---------- Play Game FAB ---------- */
+  .play-game-fab{
+    position:fixed; bottom:22px; right:18px; z-index:200;
+    width:60px; height:60px; border-radius:50%;
+    background:var(--bg-panel); border:2px solid var(--accent);
+    display:flex; align-items:center; justify-content:center;
+    font-size:28px; box-shadow:0 4px 18px rgba(0,0,0,.45);
+    cursor:pointer;
+    animation:fab-pulse 2.4s ease-in-out infinite;
+  }
+  .play-game-fab:hover{ border-color:var(--accent-bright); }
+  @keyframes fab-pulse{
+    0%, 100%{ transform:scale(1); box-shadow:0 4px 18px rgba(0,0,0,.45); }
+    50%{ transform:scale(1.08); box-shadow:0 4px 26px var(--accent-soft); }
+  }
+  .play-game-tag{
+    position:fixed; bottom:86px; right:14px; z-index:200;
+    background:var(--bg-panel); border:1px solid var(--line-bright);
+    color:var(--ink-dim); font-size:11px; padding:5px 10px; border-radius:12px;
+    white-space:nowrap;
+  }
+
+  /* ---------- Server switcher ---------- */
+  .switcher-wrap{ background:var(--bg-panel); border-bottom:1px solid var(--line); }
+  .switcher{ max-width:520px; margin:0 auto; padding:16px 20px 22px; display:flex; gap:8px; }
+  .switch-btn{
+    flex:1; text-align:center; padding:12px 10px; border-radius:3px;
+    border:1px solid var(--line-bright); background:var(--bg-panel-2); cursor:pointer;
+    font-family:'Bitter', serif; font-weight:700; font-size:14px; color:var(--ink-faint);
+    transition:color .3s ease, border-color .3s ease, background .3s ease, transform .2s ease;
+    display:flex; flex-direction:column; gap:3px; align-items:center;
+  }
+  .switch-btn .tag{ font-family:'Work Sans', sans-serif; font-weight:500; font-size:11px; color:var(--ink-faint); }
+  .switch-btn:active{ transform:scale(.98); }
+  html[data-server="goats"] .switch-btn[data-target="goats"],
+  html[data-server="dragon"] .switch-btn[data-target="dragon"]{
+    color:var(--ink); border-color:var(--accent); background:var(--accent-soft);
+  }
+  html[data-server="goats"] .switch-btn[data-target="goats"] .tag,
+  html[data-server="dragon"] .switch-btn[data-target="dragon"] .tag{ color:var(--accent-bright); }
+
+  /* ---------- Hero (crossfade swap) ---------- */
+  .hero{
+    position:relative;
+    background:radial-gradient(ellipse 900px 500px at 15% -10%, var(--accent-soft), transparent 60%), linear-gradient(180deg, #171d19 0%, #0f1310 100%);
+    border-bottom:1px solid var(--line);
+    overflow:hidden;
+    transition:background .6s ease;
+  }
+  .hero-inner{ max-width:1180px; margin:0 auto; padding:64px 20px 90px; position:relative; min-height:300px; }
+  .server-panel{
+    position:absolute; inset:0; padding:64px 20px 90px; max-width:1180px; margin:0 auto;
+    opacity:0; transform:translateX(24px); pointer-events:none;
+    transition:opacity .45s ease, transform .45s ease;
+  }
+  html[data-server="goats"] .server-panel[data-panel="goats"],
+  html[data-server="dragon"] .server-panel[data-panel="dragon"]{
+    opacity:1; transform:translateX(0); pointer-events:auto; position:relative;
+  }
+  .hero-eyebrow{ color:var(--accent-bright); font-size:13px; font-weight:600; margin-bottom:16px; }
+  .hero h1{ font-size:clamp(34px, 6vw, 62px); line-height:1.05; max-width:760px; }
+  .hero p{ max-width:540px; color:var(--ink-dim); font-size:16px; margin-top:18px; line-height:1.65; }
+  .hero-actions{ display:flex; gap:12px; margin-top:28px; flex-wrap:wrap; }
+  .base-badge{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border:1px solid var(--line-bright); border-radius:20px; font-size:12.5px; color:var(--ink-dim); margin-top:22px; }
+  .base-badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--accent); }
+
+  /* ---------- Content sections ---------- */
+  .layout{ max-width:1180px; margin:0 auto; padding:56px 20px 30px; }
+  .content-panel{ display:none; }
+  html[data-server="goats"] .content-panel[data-panel="goats"],
+  html[data-server="dragon"] .content-panel[data-panel="dragon"]{
+    display:block; animation:panel-in .4s ease;
+  }
+  @keyframes panel-in{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:translateY(0); } }
+
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:26px; padding-bottom:14px; border-bottom:1px solid var(--line); }
+  .section-head h2{ font-size:23px; }
+  .section-head span.small{ font-size:13px; color:var(--ink-faint); }
+
+  .feature-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:52px; }
+  .feature-card{ background:var(--bg-panel); border:1px solid var(--line); border-radius:3px; padding:22px; }
+  .feature-card .icon{ font-size:22px; margin-bottom:14px; }
+  .feature-card h3{ font-size:16px; margin-bottom:8px; }
+  .feature-card p{ font-size:13.5px; color:var(--ink-dim); line-height:1.6; }
+
+  .event-banner{
+    display:grid; grid-template-columns:1fr auto; align-items:center; gap:20px;
+    background:linear-gradient(135deg, var(--bg-panel) 0%, var(--bg-panel-2) 100%);
+    border:1px solid var(--accent); border-radius:4px; padding:26px 28px; margin-bottom:52px;
+  }
+  .event-banner .event-tag{ font-size:12px; font-weight:600; color:var(--accent-bright); margin-bottom:8px; }
+  .event-banner h3{ font-size:20px; margin-bottom:6px; }
+  .event-banner p{ font-size:14px; color:var(--ink-dim); max-width:52ch; }
+
+  .creature-row{ display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:52px; }
+  .creature-card{ border:1px solid var(--line); border-radius:3px; overflow:hidden; background:var(--bg-panel); }
+  .creature-thumb{ aspect-ratio:16/10; background:radial-gradient(circle at 30% 20%, var(--accent-soft), transparent 65%), var(--bg-panel-2); display:flex; align-items:center; justify-content:center; font-size:34px; }
+  .creature-card .info{ padding:16px; }
+  .creature-card h4{ font-family:'Bitter', serif; font-size:15px; margin-bottom:5px; }
+  .creature-card p{ font-size:12.5px; color:var(--ink-faint); }
+
+  /* ---------- Discord CTA (persistent, one link for both) ---------- */
+  .discord-cta{
+    max-width:1180px; margin:0 auto 60px; padding:0 20px;
+  }
+  .discord-cta-inner{
+    background:var(--bg-panel); border:1px solid var(--line-bright); border-radius:6px;
+    padding:36px 30px; text-align:center;
+  }
+  .discord-cta-inner h3{ font-size:22px; margin-bottom:10px; }
+  .discord-cta-inner p{ color:var(--ink-dim); font-size:14.5px; margin-bottom:22px; }
+  .discord-btn{
+    display:inline-flex; align-items:center; gap:10px;
+    background:#5865F2; color:#fff; padding:14px 28px;
+    border-radius:4px; font-weight:600; font-size:15px;
+  }
+  .discord-btn:hover{ background:#4752c4; }
+
+  /* ---------- Footer ---------- */
+  /* ---------- Wild Tame Roll minigame ---------- */
+  .roll-section{ max-width:1180px; margin:0 auto 60px; padding:0 20px; }
+  .roll-card{
+    background:var(--bg-panel); border:1px solid var(--line-bright); border-radius:6px;
+    padding:38px 30px; text-align:center; position:relative; overflow:hidden;
+  }
+  .roll-card h3{ font-size:22px; margin-bottom:8px; }
+  .roll-card > p{ color:var(--ink-dim); font-size:14.5px; max-width:56ch; margin:0 auto 26px; }
+  .roll-stages{
+    display:flex; align-items:center; justify-content:center; gap:14px;
+    margin:0 auto 22px; flex-wrap:wrap; max-width:420px;
+  }
+  .roll-stage-wrap{ display:flex; flex-direction:column; align-items:center; gap:8px; min-width:92px; }
+  .roll-stage-label{ font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; text-align:center; }
+  .roll-plus{ font-size:20px; color:var(--ink-faint); align-self:center; }
+  .roll-stage{
+    width:92px; height:92px;
+    border-radius:50%;
+    background:var(--bg-panel-2);
+    border:2px solid var(--line-bright);
+    display:flex; align-items:center; justify-content:center;
+    font-size:36px;
+    transition:border-color .3s ease;
+  }
+  #levelStage{ font-family:'Bitter', serif; font-weight:800; font-size:24px; color:var(--ink); }
+  .roll-stage.spinning{
+    animation:token-spin .9s cubic-bezier(.25,.9,.35,1);
+    border-color:var(--accent);
+  }
+  @keyframes token-spin{
+    0%{ transform:rotate(0) scale(1); }
+    60%{ transform:rotate(720deg) scale(1.15); }
+    100%{ transform:rotate(900deg) scale(1); }
+  }
+  .roll-btn{
+    background:var(--accent); color:#101410; border:none;
+    padding:14px 30px; border-radius:4px; font-weight:700; font-size:15px;
+    cursor:pointer; font-family:'Bitter', serif;
+    transition:background .3s ease, transform .15s ease;
+  }
+  .roll-btn:hover{ background:var(--accent-bright); }
+  .roll-btn:active{ transform:scale(.97); }
+  .roll-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .roll-result{
+    margin-top:18px; font-size:15px; min-height:24px;
+    color:var(--ink-dim);
+  }
+  .roll-result .rarity-common{ color:var(--ink-dim); font-weight:700; }
+  .roll-result .rarity-uncommon{ color:#6fae72; font-weight:700; }
+  .roll-result .rarity-rare{ color:#5aa9e6; font-weight:700; }
+  .roll-result .rarity-legendary{ color:var(--accent-bright); font-weight:700; }
+  .roll-result .rarity-void{ color:#8a5cf0; font-weight:700; }
+  .roll-result .rarity-crystal{ color:#5ad9e6; font-weight:700; }
+  .roll-cooldown{
+    margin-top:20px; padding-top:18px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--ink-faint);
+  }
+  .roll-total{ margin-top:6px; font-size:12.5px; color:var(--ink-faint); }
+  .roll-total strong{ color:var(--ink); font-family:'Bitter', serif; }
+  .roll-note{
+    margin-top:16px; font-size:12.5px; color:var(--ink-faint);
+    max-width:52ch; margin-left:auto; margin-right:auto;
+  }
+  .roll-note a{ color:var(--accent-bright); text-decoration:underline; }
+
+  .confetti-piece{
+    position:fixed; top:-20px; width:8px; height:14px;
+    opacity:.95; z-index:999; pointer-events:none;
+    animation-name:confetti-fall; animation-timing-function:ease-in; animation-fill-mode:forwards;
+  }
+  @keyframes confetti-fall{
+    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform:translateY(105vh) rotate(560deg); opacity:.3; }
+  }
+
+  /* ---------- Crystal Wyvern celebration ---------- */
+  .crystal-shard{
+    position:fixed; top:-20px; width:10px; height:16px;
+    clip-path:polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    opacity:.95; z-index:9998; pointer-events:none;
+    animation-name:confetti-fall; animation-timing-function:ease-in; animation-fill-mode:forwards;
+  }
+  .crystal-flash{
+    position:fixed; inset:0; z-index:9997; pointer-events:none;
+    background:radial-gradient(circle at 50% 45%, rgba(255,255,255,.9) 0%, rgba(90,217,230,.45) 35%, transparent 70%);
+    opacity:0;
+    animation:crystal-flash-anim 1.4s ease forwards;
+  }
+  @keyframes crystal-flash-anim{
+    0%{ opacity:0; }
+    18%{ opacity:1; }
+    100%{ opacity:0; }
+  }
+
+  /* ---------- Void Wyvern black hole ---------- */
+  .void-overlay{
+    position:fixed; inset:0; z-index:9999; pointer-events:none;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+  }
+  .void-circle{
+    width:0; height:0; border-radius:50%; position:relative;
+    background:radial-gradient(circle at center, #000 0%, #0a0410 45%, rgba(138,92,240,.55) 75%, transparent 100%);
+    box-shadow:0 0 90px 45px rgba(138,92,240,.55);
+    transition:width 1s cubic-bezier(.7,0,.3,1), height 1s cubic-bezier(.7,0,.3,1);
+  }
+  .void-circle.expand{ width:300vmax; height:300vmax; }
+  .void-circle::before{
+    content:''; position:absolute; inset:12%; border-radius:50%;
+    background:conic-gradient(from 0deg, transparent, rgba(255,255,255,.3), transparent 55%, rgba(169,125,255,.35), transparent 90%);
+    animation:void-spin 1.1s linear infinite;
+  }
+  @keyframes void-spin{ to{ transform:rotate(360deg); } }
+
+  footer{ border-top:1px solid var(--line); background:var(--bg-panel); padding:30px 20px; }
+  .footer-inner{ max-width:1180px; margin:0 auto; text-align:center; color:var(--ink-faint); font-size:13px; }
+
+  @media (max-width: 860px){
+    .feature-grid, .creature-row{ grid-template-columns:1fr; }
+    .event-banner{ grid-template-columns:1fr; }
+    .hero-inner{ min-height:420px; }
+    .server-panel{ padding:48px 20px 60px; }
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="logo">
+      <div class="logo-mark" onclick="openModVote()" title="Vote on our next mod">
+        <span class="flame flame1"></span>
+        <span class="flame flame2"></span>
+        <span class="flame flame3"></span>
+        <svg viewBox="0 0 100 70" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="50,3 92,21 92,49 50,67 8,49 8,21" fill="none" stroke="#000" stroke-width="3"/>
+          <text x="50" y="47" text-anchor="middle" font-family="'Bitter', serif" font-weight="800" font-style="italic" font-size="30" letter-spacing="-1.5" fill="#000">ARK</text>
+        </svg>
+      </div>
+      Survivor Network
+    </div>
+    <a class="mascot-wrap" href="game.html" title="Play Wild Run">
+      <div class="mascot goat-mascot" title="The Goats">
+        <svg viewBox="0 0 64 56" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 16 C12 8 14 0 20 2 C20 8 22 12 26 14 Z" fill="#4f6b38" stroke="#324521" stroke-width="1"/>
+          <path d="M46 16 C52 8 50 0 44 2 C44 8 42 12 38 14 Z" fill="#4f6b38" stroke="#324521" stroke-width="1"/>
+          <path d="M32 8 L46 22 L44 38 L32 48 L20 38 L18 22 Z" fill="#6f9450"/>
+          <path d="M32 8 L46 22 L44 38 L32 48 L20 38 L18 22 Z" fill="none" stroke="#324521" stroke-width="1.4"/>
+          <path d="M25 26 L31 28" stroke="#d9eab8" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M39 26 L33 28" stroke="#d9eab8" stroke-width="2.2" stroke-linecap="round"/>
+          <ellipse cx="26" cy="42" rx="2" ry="1.3" fill="#1c2a14"/>
+          <ellipse cx="38" cy="42" rx="2" ry="1.3" fill="#1c2a14"/>
+        </svg>
+        <span class="smoke s1"></span>
+        <span class="smoke s2"></span>
+        <span class="smoke s3"></span>
+      </div>
+      <div class="mascot dragon-mascot" title="Dragon Island">
+        <svg viewBox="0 0 64 56" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 16 C12 8 14 0 20 2 C20 8 22 12 26 14 Z" fill="#5a3d7a" stroke="#3a2650" stroke-width="1"/>
+          <path d="M46 16 C52 8 50 0 44 2 C44 8 42 12 38 14 Z" fill="#5a3d7a" stroke="#3a2650" stroke-width="1"/>
+          <path d="M32 8 L46 22 L44 38 L32 48 L20 38 L18 22 Z" fill="#7a52a8"/>
+          <path d="M32 8 L46 22 L44 38 L32 48 L20 38 L18 22 Z" fill="none" stroke="#3a2650" stroke-width="1.4"/>
+          <path d="M25 26 L31 28" stroke="#c9b3ff" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M39 26 L33 28" stroke="#c9b3ff" stroke-width="2.2" stroke-linecap="round"/>
+          <ellipse cx="26" cy="42" rx="2" ry="1.3" fill="#2a1a3a"/>
+          <ellipse cx="38" cy="42" rx="2" ry="1.3" fill="#2a1a3a"/>
+        </svg>
+        <span class="smoke s1"></span>
+        <span class="smoke s2"></span>
+        <span class="smoke s3"></span>
+      </div>
+    </a>
+  </div>
+</div>
+
+<div class="switcher-wrap">
+  <div class="switcher">
+    <div class="switch-btn" data-target="goats" onclick="setServer('goats')">
+      🐐 The Goats
+      <span class="tag">ARK: Survival Evolved</span>
+    </div>
+    <div class="switch-btn" data-target="dragon" onclick="setServer('dragon')">
+      🐲 Dragon Island
+      <span class="tag">ARK: Survival Ascended</span>
+    </div>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-inner">
+
+    <div class="server-panel" data-panel="goats">
+      <div class="hero-eyebrow">SERVER 01 — THE GOATS</div>
+      <h1>Our first server. Bigger dinos, deeper water tricks.</h1>
+      <p>Fjordur, boosted so wild dinos spawn at way higher levels than vanilla. We've also flipped a few water rules — land predators can out-swim some aquatic dinos here, so don't assume the shoreline is safe just because you tamed a fish. Fair warning: taming is noticeably harder here than on Dragon Island.</p>
+      <div class="base-badge"><span class="dot"></span> ARK: Survival Evolved · Fjordur · High-Level Spawns</div>
+      <div class="hero-actions">
+        <a class="btn btn-accent btn-lg" href="https://discord.gg/FaKQr7FxY" target="_blank" rel="noopener">Connect to The Goats</a>
+      </div>
+    </div>
+
+    <div class="server-panel" data-panel="dragon">
+      <div class="hero-eyebrow">SERVER 02 — DRAGON ISLAND</div>
+      <h1>Our newest server. A giant custom map, built for the ride.</h1>
+      <p>Ascended, running on a fully custom map built for exploration and fights, not reused terrain. Rates stay standard — same as official — the difference here is what you're up against: new dino species, new abilities, and new animation sets for both players and animals.</p>
+      <div class="base-badge"><span class="dot"></span> ARK: Survival Ascended · Custom Map · Standard Rates</div>
+      <div class="hero-actions">
+        <a class="btn btn-accent btn-lg" href="https://discord.gg/FaKQr7FxY" target="_blank" rel="noopener">Connect to Dragon Island</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- GOATS content -->
+  <div class="content-panel" data-panel="goats">
+    <div class="section-head">
+      <h2>What's new on The Goats</h2>
+      <span class="small">ARK: Survival Evolved</span>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="icon">🐾</div>
+        <h3>High-Level Dino Spawns</h3>
+        <p>Wild dinos on this map spawn far above vanilla levels. Expect tougher fights, stronger tames, and bosses that actually put up a fight.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🗺️</div>
+        <h3>Fjordur</h3>
+        <p>The full Fjordur map — every region, every biome, every underground cave — played the way it's meant to be, just with the levels turned way up.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🌊</div>
+        <h3>Flipped Water Speeds</h3>
+        <p>On land, a Sabertooth is fast. In our water, it's faster than a Baryonyx. We reworked swim speeds so land predators can chase you into the shallows — don't get comfortable near the shore.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🥩</div>
+        <h3>Tougher Taming</h3>
+        <p>Longer knockouts, more narcotics, pickier food requirements. High-level dinos don't go down easy — come prepared or come back later.</p>
+      </div>
+    </div>
+
+    <div class="event-banner">
+      <div>
+        <div class="event-tag">WEEKEND EVENT</div>
+        <h3>Alpha Hunt: The Goats</h3>
+        <p>Alpha creatures are marked across Fjordur for 48 hours. Track them down solo or with your tribe — first kill on each alpha gets the bonus drop.</p>
+      </div>
+    </div>
+
+    <div class="section-head"><h2>Water speed matchup</h2></div>
+    <div class="creature-row">
+      <div class="creature-card"><div class="creature-thumb">🐆</div><div class="info"><h4>Sabertooth</h4><p>Land predator · Faster in water than most aquatic tames here</p></div></div>
+      <div class="creature-card"><div class="creature-thumb">🐺</div><div class="info"><h4>Fenrir</h4><p>Already a strong swimmer · Even faster with our flipped rules</p></div></div>
+      <div class="creature-card"><div class="creature-thumb">🦖</div><div class="info"><h4>Raptor</h4><p>Normally weak in water · Buffed enough to be a real threat in the shallows</p></div></div>
+    </div>
+  </div>
+
+  <!-- DRAGON ISLAND content -->
+  <div class="content-panel" data-panel="dragon">
+    <div class="section-head">
+      <h2>What's new on Dragon Island</h2>
+      <span class="small">ARK: Survival Ascended</span>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="icon">🗺️</div>
+        <h3>Gigantic Custom Map</h3>
+        <p>A brand-new map built from scratch, several times the size of a standard ARK map, designed around exploration and set-piece fights instead of reused terrain.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🎬</div>
+        <h3>New Animations</h3>
+        <p>Players and animals both got new animation sets — new movement, new attacks, new idle behavior. Combat and taming both feel noticeably different here.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">✨</div>
+        <h3>Special Abilities</h3>
+        <p>New dino species come with unique abilities you won't find in vanilla ARK — not reskins, actual new mechanics per creature. Rates stay standard, so it's skill and gear that decide fights.</p>
+      </div>
+    </div>
+
+    <div class="event-banner">
+      <div>
+        <div class="event-tag">WEEKEND EVENT</div>
+        <h3>Alpha Hunt: Dragon Island</h3>
+        <p>The map's alpha dragons have been spotted across the eastern peaks. 48-hour hunt window, tribe or solo — track, fight, and claim the drop.</p>
+      </div>
+    </div>
+
+    <div class="section-head"><h2>New dinos & their abilities</h2></div>
+    <div class="creature-row">
+      <div class="creature-card"><div class="creature-thumb">🐉</div><div class="info"><h4>Ember Wyrm</h4><p>Tamable · Breath attack melts stone structures</p></div></div>
+      <div class="creature-card"><div class="creature-thumb">🐲</div><div class="info"><h4>Storm Drake</h4><p>Tamable · Calls down a targeted lightning strike</p></div></div>
+      <div class="creature-card"><div class="creature-thumb">🌊</div><div class="info"><h4>Voidscale Serpent</h4><p>Rare · Brief cloak ability while submerged</p></div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="roll-section">
+  <div class="roll-card" id="rollCard">
+    <h3>Roll for a Wild Tame</h3>
+    <p>One roll every 3 days — or skip the wait for 100 tokens. Land a rare or legendary pull and it's yours to claim in-game — screenshot the result and show an admin.</p>
+
+    <div class="token-balance">🪙 <strong id="tokenBalance">0</strong> tokens</div>
+
+    <div class="roll-stages">
+      <div class="roll-stage-wrap">
+        <div class="roll-stage" id="rollStage">🥚</div>
+        <div class="roll-stage-label">Animal</div>
+      </div>
+      <div class="roll-plus">+</div>
+      <div class="roll-stage-wrap">
+        <div class="roll-stage" id="locationStage">📍</div>
+        <div class="roll-stage-label">Spawn Location</div>
+      </div>
+      <div class="roll-plus">+</div>
+      <div class="roll-stage-wrap">
+        <div class="roll-stage" id="levelStage">🎚️</div>
+        <div class="roll-stage-label">Level</div>
+      </div>
+    </div>
+
+    <div class="roll-btn-row">
+      <button class="roll-btn" id="rollBtn" onclick="rollAnimal()">Roll</button>
+      <button class="token-roll-btn" id="tokenRollBtn" onclick="tokenRoll()">🪙 Roll for 100</button>
+    </div>
+
+    <div class="roll-result" id="rollResult"></div>
+    <div class="roll-cooldown" id="rollCooldown">Loading…</div>
+    <div class="roll-total">Total tames won: <strong id="rollTotalWins">0</strong></div>
+
+    <button class="screenshot-btn" id="screenshotBtn" onclick="takeRollScreenshot()">📸 Save screenshot of my roll</button>
+
+    <div class="roll-note">📌 We've got a dedicated channel in our <a href="https://discord.gg/FaKQr7FxY" target="_blank" rel="noopener">Discord</a> just for posting these roll screenshots — drop yours there to get it added in-game.</div>
+
+    <div class="daily-rewards">
+      <div class="daily-head">7-Day Login Rewards</div>
+      <div class="daily-row" id="dailyRow"></div>
+    </div>
+
+    <span class="admin-toggle" onclick="toggleAdminPanel()">Admin Mode</span>
+    <div class="admin-panel" id="adminPanel">
+      <div class="admin-input-row" id="adminInputRow">
+        <input type="password" class="admin-input" id="adminCodeInput" placeholder="Enter code" onkeydown="if(event.key==='Enter') submitAdminCode()">
+        <button class="admin-submit-btn" onclick="submitAdminCode()">Unlock</button>
+      </div>
+      <div class="admin-status" id="adminStatus"></div>
+      <div class="admin-animal-panel" id="adminAnimalPanel"></div>
+    </div>
+  </div>
+</div>
+
+<div class="discord-cta">
+  <div class="discord-cta-inner">
+    <h3>Come say hi in the Discord</h3>
+    <p>Rules, wipe schedule, admin support, and both servers' communities — all in one place.</p>
+    <a class="discord-btn" href="https://discord.gg/FaKQr7FxY" target="_blank" rel="noopener">Join Discord</a>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">© 2026 Survivor Network — The Goats & Dragon Island.</div>
+</footer>
+
+<script>
+  function setServer(name){
+    document.documentElement.setAttribute('data-server', name);
+  }
+
+  // ---------- Mod vote modal ----------
+  var MOD_IDS = ['stacking', 'cybers', 'spyglass'];
+  var STORAGE_MOD_VOTES = 'ew_modVotes';
+  var STORAGE_HAS_VOTED = 'ew_hasVoted';
+
+  function getModVotes(){
+    try { return JSON.parse(safeGet(STORAGE_MOD_VOTES)) || {}; } catch(e){ return {}; }
+  }
+
+  function refreshModVoteUI(){
+    var votes = getModVotes();
+    var votedFor = safeGet(STORAGE_HAS_VOTED);
+    var maxVotes = Math.max(1, votes.stacking || 0, votes.cybers || 0, votes.spyglass || 0);
+    MOD_IDS.forEach(function(id){
+      var count = votes[id] || 0;
+      document.getElementById('voteCount-' + id).textContent = count;
+      var barEl = document.getElementById('voteBar-' + id);
+      if (barEl) barEl.style.width = Math.round((count / maxVotes) * 100) + '%';
+      var btn = document.getElementById('voteBtn-' + id);
+      if (votedFor){
+        btn.disabled = true;
+        btn.textContent = (votedFor === id) ? 'Voted ✓' : 'Vote';
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Vote';
+      }
+    });
+  }
+
+  function voteForMod(id){
+    if (safeGet(STORAGE_HAS_VOTED)) return;
+    var votes = getModVotes();
+    votes[id] = (votes[id] || 0) + 1;
+    safeSet(STORAGE_MOD_VOTES, JSON.stringify(votes));
+    safeSet(STORAGE_HAS_VOTED, id);
+    refreshModVoteUI();
+  }
+
+  function openModVote(){
+    document.getElementById('modVoteOverlay').classList.add('open');
+    refreshModVoteUI();
+  }
+  function closeModVote(){
+    document.getElementById('modVoteOverlay').classList.remove('open');
+  }
+
+  // ---------- Admin mode ----------
+  var ADMIN_CODE = 'dildosaur';
+  var RESET_CODE = 'reset';
+  var isAdmin = (safeGet('ew_isAdmin') === '1');
+
+  function toggleAdminPanel(){
+    document.getElementById('adminPanel').classList.toggle('open');
+    refreshAdminAnimalPanel();
+  }
+
+  function submitAdminCode(){
+    var input = document.getElementById('adminCodeInput');
+    var statusEl = document.getElementById('adminStatus');
+    var val = (input.value || '').trim().toLowerCase();
+
+    if (val === ADMIN_CODE){
+      isAdmin = true;
+      safeSet('ew_isAdmin', '1');
+      statusEl.textContent = '🔓 Admin mode active — roll as many times as you want.';
+      statusEl.style.color = 'var(--accent-bright)';
+      document.getElementById('adminInputRow').style.display = 'none';
+      refreshAdminAnimalPanel();
+      refreshRollUI();
+    } else if (val === RESET_CODE){
+      if (!isAdmin){
+        statusEl.textContent = 'Admin mode isn\'t active — nothing to reset.';
+        statusEl.style.color = 'var(--ink-faint)';
+        return;
+      }
+      var sure = confirm('This will turn OFF admin mode and reset your roll cooldown and history. Continue?');
+      if (!sure) return;
+
+      isAdmin = false;
+      safeSet('ew_isAdmin', '0');
+      safeSet(STORAGE_LAST_ROLL, '0');
+      safeSet(STORAGE_TOTAL_WINS, '0');
+      safeSet(STORAGE_ROLL_COUNT, '0');
+      safeSet(STORAGE_LAST_ANIMAL, '');
+      safeSet(STORAGE_LAST_LOCATION, '');
+      safeSet(STORAGE_LAST_LEVEL, '');
+
+      statusEl.textContent = 'Admin mode disabled. Rolls have been reset.';
+      statusEl.style.color = 'var(--ink-dim)';
+      document.getElementById('adminInputRow').style.display = 'flex';
+      input.value = '';
+      refreshAdminAnimalPanel();
+      refreshRollUI();
+    } else {
+      statusEl.textContent = 'Incorrect code.';
+      statusEl.style.color = '#e6645a';
+    }
+  }
+
+  function refreshAdminAnimalPanel(){
+    var panel = document.getElementById('adminAnimalPanel');
+    if (!isAdmin){
+      panel.classList.remove('show');
+      panel.innerHTML = '';
+      return;
+    }
+    panel.classList.add('show');
+    panel.innerHTML = ANIMAL_POOL.map(function(a){
+      return '<div class="admin-animal-btn" onclick="forceRollAnimal(\'' + a.name.replace(/'/g, "\\'") + '\')">' +
+        '<span class="ic">' + a.icon + '</span>' + a.name + '</div>';
+    }).join('');
+  }
+
+  function forceRollAnimal(name){
+    var found = null;
+    for (var i = 0; i < ANIMAL_POOL.length; i++){
+      if (ANIMAL_POOL[i].name === name){ found = ANIMAL_POOL[i]; break; }
+    }
+    if (found) performRoll(found);
+  }
+
+  // ---------- Wild Tame Roll ----------
+  var COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000; // 3 days
+  var STORAGE_LAST_ROLL = 'ew_lastRollTime';
+  var STORAGE_LAST_ANIMAL = 'ew_lastAnimal';
+  var STORAGE_LAST_LOCATION = 'ew_lastLocation';
+  var STORAGE_LAST_LEVEL = 'ew_lastLevel';
+  var STORAGE_TOTAL_WINS = 'ew_totalWins';
+  var STORAGE_ROLL_COUNT = 'ew_rollCount';
+  var TOKEN_KEY = 'ew_tokens'; // shared with the Wild Run game
+  var DAILY_KEY = 'ew_dailyRewards'; // { day1: timestampClaimed, ... startedAt: ts }
+
+  function getTokens(){ return parseInt(safeGet(TOKEN_KEY) || '0', 10); }
+  function addTokens(n){
+    var v = getTokens() + n;
+    safeSet(TOKEN_KEY, v.toString());
+    return v;
+  }
+  function spendTokens(n){
+    var v = getTokens();
+    if (v < n) return false;
+    safeSet(TOKEN_KEY, (v - n).toString());
+    return true;
+  }
+  function getRollCount(){ return parseInt(safeGet(STORAGE_ROLL_COUNT) || '0', 10); }
+  function bumpRollCount(){
+    var c = getRollCount() + 1;
+    safeSet(STORAGE_ROLL_COUNT, c.toString());
+    if (c % 10 === 0){
+      addTokens(100);
+      return true; // hit a bonus milestone
+    }
+    return false;
+  }
+
+  var ANIMAL_POOL = [
+    { name: 'Wild Boar',        icon: '🐗', rarity: 'common',    weight: 35  },
+    { name: 'Raptor',           icon: '🦖', rarity: 'common',    weight: 25  },
+    { name: 'Direwolf',         icon: '🐺', rarity: 'uncommon',  weight: 15  },
+    { name: 'Argentavis',       icon: '🦅', rarity: 'uncommon',  weight: 10  },
+    { name: 'Fire Wyvern',      icon: '🔥', rarity: 'rare',      weight: 5   },
+    { name: 'Lightning Wyvern', icon: '⚡', rarity: 'rare',      weight: 5   },
+    { name: 'Poison Wyvern',    icon: '☠️', rarity: 'rare',      weight: 2.5 },
+    { name: 'Void Wyvern',      icon: '🕳️', rarity: 'void',      weight: 1.5 },
+    { name: 'Crystal Wyvern',   icon: '💎', rarity: 'crystal',   weight: 1   }
+  ];
+
+  var LOCATIONS_BY_SERVER = {
+    goats: ['Frozen Fjords', 'Redwood Highlands', 'Sunken Ruins', 'Highland Cliffs', 'The Ice Caves', 'Volcanic Vents', 'Asgard Realm', 'Beach Shallows'],
+    dragon: ['Ember Ridge', 'Storm Coast', 'Sky Isles', 'Frostfang Valley', 'The Sunken Temple', "Dragon's Maw", 'Obsidian Peaks', 'Misty Lowlands']
+  };
+
+  function pickLocation(){
+    var server = document.documentElement.getAttribute('data-server') || 'goats';
+    var pool = LOCATIONS_BY_SERVER[server] || LOCATIONS_BY_SERVER.goats;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  function pickLevel(){
+    var server = document.documentElement.getAttribute('data-server') || 'goats';
+    if (server === 'dragon'){
+      return Math.floor(Math.random() * (150 - 75 + 1)) + 75;
+    }
+    return Math.floor(Math.random() * (2000 - 500 + 1)) + 500;
+  }
+
+  function safeGet(key){
+    try { return localStorage.getItem(key); } catch(e){ return null; }
+  }
+  function safeSet(key, val){
+    try { localStorage.setItem(key, val); } catch(e){ /* storage unavailable, roll still works this visit */ }
+  }
+
+  function getLastRollTime(){ return parseInt(safeGet(STORAGE_LAST_ROLL) || '0', 10); }
+  function getTotalWins(){ return parseInt(safeGet(STORAGE_TOTAL_WINS) || '0', 10); }
+  function getLastAnimal(){
+    try { return JSON.parse(safeGet(STORAGE_LAST_ANIMAL)); } catch(e){ return null; }
+  }
+  function getLastLocation(){ return safeGet(STORAGE_LAST_LOCATION) || ''; }
+  function getLastLevel(){ return safeGet(STORAGE_LAST_LEVEL) || ''; }
+
+  function msRemaining(){
+    var diff = COOLDOWN_MS - (Date.now() - getLastRollTime());
+    return diff > 0 ? diff : 0;
+  }
+
+  function formatCountdown(ms){
+    var totalSec = Math.floor(ms / 1000);
+    var d = Math.floor(totalSec / 86400);
+    var h = Math.floor((totalSec % 86400) / 3600);
+    var m = Math.floor((totalSec % 3600) / 60);
+    var s = totalSec % 60;
+    return d + 'd ' + h + 'h ' + m + 'm ' + s + 's';
+  }
+
+  function pickAnimal(){
+    var totalWeight = ANIMAL_POOL.reduce(function(sum, a){ return sum + a.weight; }, 0);
+    var roll = Math.random() * totalWeight;
+    var cumulative = 0;
+    for (var i = 0; i < ANIMAL_POOL.length; i++){
+      cumulative += ANIMAL_POOL[i].weight;
+      if (roll <= cumulative) return ANIMAL_POOL[i];
+    }
+    return ANIMAL_POOL[0];
+  }
+
+  function refreshRollUI(){
+    var btn = document.getElementById('rollBtn');
+    var cooldownEl = document.getElementById('rollCooldown');
+    var resultEl = document.getElementById('rollResult');
+    var stage = document.getElementById('rollStage');
+    var locationStage = document.getElementById('locationStage');
+    var levelStage = document.getElementById('levelStage');
+    var totalWinsEl = document.getElementById('rollTotalWins');
+    var tokenBalEl = document.getElementById('tokenBalance');
+    var tokenBtn = document.getElementById('tokenRollBtn');
+
+    totalWinsEl.textContent = getTotalWins();
+    tokenBalEl.textContent = getTokens();
+
+    var remaining = msRemaining();
+    var lastAnimal = getLastAnimal();
+    var lastLocation = getLastLocation();
+    var lastLevel = getLastLevel();
+
+    if (lastAnimal && !stage.classList.contains('spinning')){
+      stage.textContent = lastAnimal.icon;
+    }
+    if (lastLocation && !locationStage.classList.contains('spinning')){
+      locationStage.textContent = '📍';
+    }
+    if (lastLevel && !levelStage.classList.contains('spinning')){
+      levelStage.textContent = 'Lv ' + lastLevel;
+    }
+
+    if (isAdmin){
+      btn.disabled = false;
+      btn.textContent = 'Roll (Admin)';
+      cooldownEl.textContent = 'Admin mode — no cooldown';
+      tokenBtn.style.display = 'none';
+      if (lastAnimal){
+        resultEl.innerHTML = 'Last roll: <span class="rarity-' + lastAnimal.rarity + '">' + lastAnimal.name + '</span>' +
+          (lastLocation ? ' — spawns at <strong>' + lastLocation + '</strong>' : '') +
+          (lastLevel ? ', level <strong>' + lastLevel + '</strong>' : '');
+      }
+      renderDailyRewards();
+      return;
+    }
+
+    if (remaining > 0){
+      btn.disabled = true;
+      btn.textContent = 'On Cooldown';
+      cooldownEl.textContent = 'Next roll available in ' + formatCountdown(remaining);
+      tokenBtn.style.display = 'inline-block';
+      tokenBtn.disabled = getTokens() < 100;
+      if (lastAnimal){
+        resultEl.innerHTML = 'Last roll: <span class="rarity-' + lastAnimal.rarity + '">' + lastAnimal.name + '</span>' +
+          (lastLocation ? ' — spawns at <strong>' + lastLocation + '</strong>' : '') +
+          (lastLevel ? ', level <strong>' + lastLevel + '</strong>' : '');
+      }
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Roll';
+      cooldownEl.textContent = 'Ready to roll!';
+      tokenBtn.style.display = 'none';
+    }
+
+    renderDailyRewards();
+  }
+
+  // ---------- 7-day login rewards ----------
+  function getDaily(){
+    try { return JSON.parse(safeGet(DAILY_KEY)) || {}; } catch(e){ return {}; }
+  }
+  function saveDaily(d){ safeSet(DAILY_KEY, JSON.stringify(d)); }
+
+  function renderDailyRewards(){
+    var row = document.getElementById('dailyRow');
+    if (!row) return;
+    var d = getDaily();
+    if (!d.startedAt) d.startedAt = Date.now();
+
+    var dayMs = 24 * 60 * 60 * 1000;
+    var daysSinceStart = Math.floor((Date.now() - d.startedAt) / dayMs);
+    var claimed = d.claimed || {};
+
+    var html = '';
+    for (var i = 1; i <= 7; i++){
+      var isClaimed = !!claimed[i];
+      var isUnlocked = daysSinceStart >= (i - 1);
+      var isToday = isUnlocked && !isClaimed;
+      var cls = 'daily-day' + (isClaimed ? ' claimed' : '') + (isToday ? ' today' : '');
+      html += '<div class="' + cls + '"><span class="d-num">Day ' + i + '</span><span class="d-amt">🪙100</span>' +
+        (isClaimed
+          ? '<button disabled>✓</button>'
+          : (isUnlocked ? '<button onclick="claimDaily(' + i + ')">Claim</button>' : '<button disabled>🔒</button>'))
+        + '</div>';
+    }
+    row.innerHTML = html;
+    saveDaily(d);
+  }
+
+  function claimDaily(day){
+    var d = getDaily();
+    if (!d.claimed) d.claimed = {};
+    if (d.claimed[day]) return;
+    d.claimed[day] = Date.now();
+    saveDaily(d);
+    addTokens(100);
+    sfxButtonSafe();
+    refreshRollUI();
+  }
+  function sfxButtonSafe(){ /* placeholder: no audio system on the main site */ }
+
+  function takeRollScreenshot(){
+    var btn = document.getElementById('screenshotBtn');
+    var card = document.getElementById('rollCard');
+    if (typeof html2canvas === 'undefined'){
+      btn.textContent = 'Screenshot tool failed to load — try again';
+      return;
+    }
+    btn.textContent = 'Capturing…';
+    html2canvas(card, { backgroundColor: '#1a201c', scale: 2 }).then(function(canvas){
+      var link = document.createElement('a');
+      link.download = 'wild-tame-roll.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      btn.textContent = '📸 Save screenshot of my roll';
+    }).catch(function(){
+      btn.textContent = 'Screenshot failed — try again';
+      setTimeout(function(){ btn.textContent = '📸 Save screenshot of my roll'; }, 2000);
+    });
+  }
+
+  function launchConfetti(){
+    var colors = ['#f0954a', '#a97dff', '#6fae72', '#5aa9e6', '#e6c65a'];
+    for (var i = 0; i < 60; i++){
+      (function(){
+        var piece = document.createElement('div');
+        piece.className = 'confetti-piece';
+        piece.style.left = (Math.random() * 100) + 'vw';
+        piece.style.top = '-20px';
+        piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+        piece.style.animationDuration = (2 + Math.random() * 1.5) + 's';
+        piece.style.animationDelay = (Math.random() * 0.3) + 's';
+        document.body.appendChild(piece);
+        setTimeout(function(){ piece.remove(); }, 4200);
+      })();
+    }
+  }
+
+  function playCrystalCelebration(){
+    // screen flash
+    var flash = document.createElement('div');
+    flash.className = 'crystal-flash';
+    document.body.appendChild(flash);
+    setTimeout(function(){ flash.remove(); }, 1500);
+
+    // crystal shard burst
+    var colors = ['#5ad9e6', '#ffffff', '#bff3f9', '#a97dff'];
+    for (var i = 0; i < 70; i++){
+      (function(){
+        var shard = document.createElement('div');
+        shard.className = 'crystal-shard';
+        shard.style.left = (Math.random() * 100) + 'vw';
+        shard.style.top = '-20px';
+        shard.style.background = colors[Math.floor(Math.random() * colors.length)];
+        shard.style.animationDuration = (1.8 + Math.random() * 1.4) + 's';
+        shard.style.animationDelay = (Math.random() * 0.4) + 's';
+        document.body.appendChild(shard);
+        setTimeout(function(){ shard.remove(); }, 4000);
+      })();
+    }
+  }
+
+  function playVoidCelebration(){
+    var overlay = document.createElement('div');
+    overlay.className = 'void-overlay';
+    var circle = document.createElement('div');
+    circle.className = 'void-circle';
+    overlay.appendChild(circle);
+    document.body.appendChild(overlay);
+
+    // force reflow so the transition actually fires
+    void circle.offsetWidth;
+    circle.classList.add('expand');
+
+    // hold at full black, then shrink back away to reveal the page
+    setTimeout(function(){
+      circle.classList.remove('expand');
+    }, 1500);
+
+    setTimeout(function(){
+      overlay.remove();
+    }, 2600);
+  }
+
+  function performRoll(forcedAnimal){
+    var btn = document.getElementById('rollBtn');
+    var stage = document.getElementById('rollStage');
+    var locationStage = document.getElementById('locationStage');
+    var levelStage = document.getElementById('levelStage');
+    var resultEl = document.getElementById('rollResult');
+
+    btn.disabled = true;
+    stage.classList.remove('spinning');
+    locationStage.classList.remove('spinning');
+    levelStage.classList.remove('spinning');
+    void stage.offsetWidth; // restart animation
+    stage.classList.add('spinning');
+    locationStage.classList.add('spinning');
+    levelStage.classList.add('spinning');
+    resultEl.textContent = '';
+
+    setTimeout(function(){
+      var animal = forcedAnimal || pickAnimal();
+      var location = pickLocation();
+      var level = pickLevel();
+
+      stage.textContent = animal.icon;
+      stage.classList.remove('spinning');
+      locationStage.textContent = '📍';
+      locationStage.classList.remove('spinning');
+      levelStage.textContent = 'Lv ' + level;
+      levelStage.classList.remove('spinning');
+
+      resultEl.innerHTML = 'You rolled <span class="rarity-' + animal.rarity + '">' + animal.name + '</span> (' + animal.rarity + ') — spawns at <strong>' + location + '</strong>, level <strong>' + level + '</strong>';
+
+      safeSet(STORAGE_LAST_ANIMAL, JSON.stringify(animal));
+      safeSet(STORAGE_LAST_LOCATION, location);
+      safeSet(STORAGE_LAST_LEVEL, level.toString());
+      safeSet(STORAGE_TOTAL_WINS, (getTotalWins() + 1).toString());
+      if (!isAdmin){
+        safeSet(STORAGE_LAST_ROLL, Date.now().toString());
+        var hitMilestone = bumpRollCount();
+        if (hitMilestone){
+          setTimeout(function(){
+            resultEl.innerHTML += '<br><span style="color:#ffd76a;">🪙 Bonus! +100 tokens for your 10th roll.</span>';
+          }, 100);
+        }
+      }
+
+      if (animal.rarity === 'rare'){
+        launchConfetti();
+      } else if (animal.rarity === 'void'){
+        playVoidCelebration();
+      } else if (animal.rarity === 'crystal'){
+        playCrystalCelebration();
+      }
+
+      refreshRollUI();
+    }, 900);
+  }
+
+  function rollAnimal(){
+    if (!isAdmin && msRemaining() > 0) return;
+    performRoll(null);
+  }
+
+  function tokenRoll(){
+    if (isAdmin) return; // admin already has unlimited rolls
+    if (msRemaining() <= 0) return; // free roll already available, no need to spend tokens
+    if (!spendTokens(100)){
+      var statusEl = document.getElementById('rollCooldown');
+      var oldText = statusEl.textContent;
+      statusEl.textContent = 'Not enough tokens (need 100).';
+      statusEl.style.color = '#e6645a';
+      setTimeout(function(){ statusEl.style.color = ''; refreshRollUI(); }, 1800);
+      return;
+    }
+    performRoll(null);
+  }
+
+  refreshRollUI();
+  setInterval(refreshRollUI, 1000);
+  if (isAdmin){
+    document.getElementById('adminInputRow').style.display = 'none';
+    document.getElementById('adminStatus').textContent = '🔓 Admin mode active — roll as many times as you want.';
+    document.getElementById('adminStatus').style.color = 'var(--accent-bright)';
+  }
+
+  // ---------- draggable mascot ----------
+  (function(){
+    var el = document.querySelector('.mascot-wrap');
+    if (!el) return;
+    var MASCOT_POS_KEY = 'ew_mascot_pos';
+    var dragging = false, moved = false;
+    var startX = 0, startY = 0, elStartLeft = 0, elStartTop = 0;
+
+    function clamp(val, min, max){ return Math.max(min, Math.min(max, val)); }
+
+    function applyPos(left, top){
+      var maxLeft = window.innerWidth - el.offsetWidth - 6;
+      var maxTop = window.innerHeight - el.offsetHeight - 6;
+      left = clamp(left, 6, Math.max(6, maxLeft));
+      top = clamp(top, 6, Math.max(6, maxTop));
+      el.style.left = left + 'px';
+      el.style.top = top + 'px';
+      el.style.right = 'auto';
+    }
+
+    // restore saved position, or default near the top-right corner
+    var savedPos = null;
+    try { savedPos = JSON.parse(safeGet(MASCOT_POS_KEY)); } catch(e){}
+    if (savedPos && typeof savedPos.left === 'number'){
+      applyPos(savedPos.left, savedPos.top);
+    }
+
+    function onDown(e){
+      dragging = true;
+      moved = false;
+      el.classList.add('dragging');
+      var rect = el.getBoundingClientRect();
+      elStartLeft = rect.left;
+      elStartTop = rect.top;
+      startX = e.clientX;
+      startY = e.clientY;
+      el.setPointerCapture && el.setPointerCapture(e.pointerId);
+    }
+    function onMove(e){
+      if (!dragging) return;
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+      applyPos(elStartLeft + dx, elStartTop + dy);
+    }
+    function onUp(e){
+      if (!dragging) return;
+      dragging = false;
+      el.classList.remove('dragging');
+      if (moved){
+        var rect = el.getBoundingClientRect();
+        safeSet(MASCOT_POS_KEY, JSON.stringify({ left: rect.left, top: rect.top }));
+      }
+    }
+
+    el.addEventListener('pointerdown', onDown);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+
+    // prevent the link navigation from firing right after a drag
+    el.addEventListener('click', function(e){
+      if (moved){ e.preventDefault(); moved = false; }
+    });
+
+    // keep it on-screen if the window gets resized
+    window.addEventListener('resize', function(){
+      var rect = el.getBoundingClientRect();
+      applyPos(rect.left, rect.top);
+    });
+  })();
+</script>
+
+<div class="modal-overlay" id="modVoteOverlay">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>Vote: Next Mod</h3>
+      <button class="modal-close" onclick="closeModVote()">✕</button>
+    </div>
+    <div class="modal-sub">Pick which mod you want added to the servers. One vote per browser.</div>
+
+    <div class="mod-card" style="--mod-color:#5aa9e6;">
+      <div class="mod-thumb">📦</div>
+      <div class="mod-body">
+        <h4>TG Stacking Mod 10000-90</h4>
+        <div class="mod-author">by paeaet, agonoiz</div>
+        <div class="mod-rating"><span class="stars">★★★★★</span><span class="rlabel">Overwhelmingly Positive</span></div>
+        <p>Raises inventory stack sizes dramatically (ammo and kibble included) and cuts carried item weight by 90% — less time managing inventory, more time playing.</p>
+        <div class="mod-vote-row">
+          <button class="mod-vote-btn" onclick="voteForMod('stacking')" id="voteBtn-stacking">Vote</button>
+          <div class="mod-vote-count"><strong id="voteCount-stacking">0</strong> votes</div>
+        </div>
+        <div class="mod-vote-bar"><div class="mod-vote-bar-fill" id="voteBar-stacking" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="mod-card" style="--mod-color:#a97dff;">
+      <div class="mod-thumb">🏗️</div>
+      <div class="mod-body">
+        <h4>Cybers Structures QOL+</h4>
+        <div class="mod-author">by cyberangel</div>
+        <div class="mod-rating"><span class="stars">★★★★☆</span><span class="rlabel">Very Positive</span></div>
+        <p>A deep building overhaul with wireless crafting, better structure snapping, a mind-wipe system that keeps your engrams, and 200+ extra structures and recipes.</p>
+        <div class="mod-vote-row">
+          <button class="mod-vote-btn" onclick="voteForMod('cybers')" id="voteBtn-cybers">Vote</button>
+          <div class="mod-vote-count"><strong id="voteCount-cybers">0</strong> votes</div>
+        </div>
+        <div class="mod-vote-bar"><div class="mod-vote-bar-fill" id="voteBar-cybers" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="mod-card" style="--mod-color:#ffd76a;">
+      <div class="mod-thumb">🔍</div>
+      <div class="mod-body">
+        <h4>Super Spyglass Plus</h4>
+        <div class="mod-author">by kavan87</div>
+        <div class="mod-rating"><span class="stars">★★★★★</span><span class="rlabel">Overwhelmingly Positive</span></div>
+        <p>An upgraded spyglass that reveals detailed creature stats, taming requirements, gene traits, egg and baby info, and your exact GPS position and heading.</p>
+        <div class="mod-vote-row">
+          <button class="mod-vote-btn" onclick="voteForMod('spyglass')" id="voteBtn-spyglass">Vote</button>
+          <div class="mod-vote-count"><strong id="voteCount-spyglass">0</strong> votes</div>
+        </div>
+        <div class="mod-vote-bar"><div class="mod-vote-bar-fill" id="voteBar-spyglass" style="width:0%"></div></div>
+      </div>
+    </div>
+
+    <div class="modal-note">Vote counts are stored on your own device for now, not shared live across everyone's browser.</div>
+  </div>
+</div>
+
+</body>
+</html>
