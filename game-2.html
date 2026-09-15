@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Wild Run — Survivor Network</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bitter:wght@400;600;700;800&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#121613;
+    --bg-panel:#1a201c;
+    --bg-panel-2:#1f2622;
+    --ink:#e9e3d3;
+    --ink-dim:#8fa093;
+    --ink-faint:#5e6b62;
+    --line:#2b332d;
+    --line-bright:#3a453d;
+    --accent:#8fae5e;
+    --accent-bright:#a9cc78;
+    --glass:rgba(20,26,22,.6);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html, body{
+    background:#0c100d; color:var(--ink);
+    font-family:'Work Sans', sans-serif;
+    overflow:hidden; height:100%; width:100%;
+    touch-action:none; user-select:none;
+  }
+  h1,h2,h3,.slab{ font-family:'Bitter', serif; font-weight:700; }
+  a{ color:inherit; text-decoration:none; }
+
+  #gameCanvas{ position:fixed; inset:0; display:block; }
+
+  /* ---------- top HUD ---------- */
+  .hud{
+    position:fixed; top:0; left:0; right:0; z-index:20;
+    padding:14px 16px; display:flex; align-items:flex-start; justify-content:space-between;
+    pointer-events:none;
+  }
+  .hud-left{ display:flex; flex-direction:column; gap:8px; pointer-events:auto; }
+  .pill-row{ display:flex; gap:8px; }
+  .glass-pill{
+    background:var(--glass); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:20px;
+  }
+  .back-link{
+    display:inline-flex; align-items:center; gap:6px;
+    font-size:12px; color:var(--ink-dim);
+    padding:7px 13px;
+  }
+  .mute-btn{
+    width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+    font-size:15px; cursor:pointer; border-radius:50%;
+  }
+  .hearts{ display:flex; flex-wrap:wrap; gap:4px; padding:6px 10px; max-width:180px; }
+  .heart-icon{ width:14px; height:14px; flex:0 0 auto; }
+
+  .hud-right{ text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .score-box{
+    font-family:'Bitter', serif; font-weight:800; font-size:19px;
+    padding:8px 16px; letter-spacing:.02em;
+  }
+  .tier-box{
+    font-size:11.5px; color:var(--accent-bright); font-weight:700;
+    padding:5px 13px; letter-spacing:.03em; border:1px solid rgba(169,204,120,.35);
+  }
+
+  .xp-bar-wrap{
+    position:fixed; top:68px; left:16px; right:16px; z-index:20;
+    height:9px; overflow:hidden; pointer-events:none;
+    border-radius:6px;
+  }
+  .xp-bar-fill{
+    height:100%; width:0%; position:relative;
+    background:linear-gradient(90deg, var(--accent), var(--accent-bright));
+    transition:width .3s cubic-bezier(.2,.8,.3,1);
+  }
+  .xp-bar-fill::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(110deg, transparent 30%, rgba(255,255,255,.35) 45%, transparent 60%);
+    background-size:220% 100%;
+    animation:shimmer 2.6s linear infinite;
+  }
+  @keyframes shimmer{ from{ background-position:120% 0; } to{ background-position:-20% 0; } }
+
+  /* ---------- combo popup ---------- */
+  .combo-pop{
+    position:fixed; z-index:35; pointer-events:none;
+    font-family:'Bitter', serif; font-weight:800; font-size:15px;
+    color:var(--accent-bright); text-shadow:0 2px 6px rgba(0,0,0,.6);
+    opacity:0;
+  }
+  .combo-pop.show{ animation:combo-float 900ms ease forwards; }
+  @keyframes combo-float{
+    0%{ opacity:0; transform:translateY(0) scale(.7); }
+    20%{ opacity:1; transform:translateY(-6px) scale(1.15); }
+    100%{ opacity:0; transform:translateY(-38px) scale(1); }
+  }
+
+  /* ---------- ability button ---------- */
+  .corner-right-wrap{
+    position:fixed; bottom:24px; right:20px; z-index:20;
+    display:flex; flex-direction:row; align-items:flex-end; gap:14px;
+  }
+  .ability-wrap{ display:flex; flex-direction:column; align-items:center; gap:8px; }
+
+  /* ---------- directional arrows ---------- */
+  .arrow-wrap{
+    position:fixed; bottom:24px; left:20px; z-index:20;
+    display:flex; flex-direction:column; gap:10px;
+  }
+  .arrow-btn{
+    width:58px; height:58px; border-radius:16px;
+    background:radial-gradient(circle at 32% 28%, #232c26, #121712 70%);
+    border:2px solid var(--line-bright);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; color:var(--ink-dim); cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.4);
+    transition:transform .1s ease, border-color .15s ease, color .15s ease, box-shadow .2s ease;
+    position:relative; overflow:hidden;
+    animation:arrow-idle-glow 2.8s ease-in-out infinite;
+  }
+  @keyframes arrow-idle-glow{
+    0%,100%{ box-shadow:0 4px 14px rgba(0,0,0,.4); }
+    50%{ box-shadow:0 4px 14px rgba(0,0,0,.4), 0 0 14px rgba(169,204,120,.18); }
+  }
+  .arrow-btn:active{ transform:scale(.88); border-color:var(--accent-bright); color:var(--ink); box-shadow:0 0 20px rgba(169,204,120,.5); }
+  .arrow-ripple{
+    position:absolute; border-radius:50%; background:rgba(169,204,120,.45);
+    transform:scale(0); pointer-events:none;
+    animation:arrow-ripple-anim .5s ease-out forwards;
+  }
+  @keyframes arrow-ripple-anim{
+    0%{ transform:scale(0); opacity:.7; }
+    100%{ transform:scale(3.2); opacity:0; }
+  }
+
+  /* ---------- ambient light layer ---------- */
+  .vignette{
+    position:fixed; inset:0; z-index:5; pointer-events:none;
+    background:radial-gradient(ellipse at 50% 55%, transparent 45%, rgba(0,0,0,.45) 100%);
+  }
+  .ability-label{
+    font-size:10px; color:var(--ink-faint); text-align:center; max-width:100px;
+    background:var(--glass); backdrop-filter:blur(8px); padding:4px 8px; border-radius:10px;
+    border:1px solid rgba(255,255,255,.06);
+  }
+  .ability-btn{
+    width:76px; height:76px; border-radius:50%;
+    background:radial-gradient(circle at 32% 28%, #232c26, #171c18 70%);
+    border:2px solid var(--line-bright);
+    display:flex; align-items:center; justify-content:center;
+    font-size:30px; color:var(--ink-faint);
+    cursor:pointer; position:relative;
+    transition:border-color .2s ease, transform .12s ease, box-shadow .2s ease;
+  }
+  .ability-btn.ready{
+    border-color:var(--accent-bright); color:var(--ink);
+    box-shadow:0 0 0 4px rgba(169,204,120,.15), 0 0 22px rgba(169,204,120,.5);
+    animation:ability-glow 1.6s ease-in-out infinite;
+  }
+  @keyframes ability-glow{
+    0%,100%{ box-shadow:0 0 0 4px rgba(169,204,120,.12), 0 0 18px rgba(169,204,120,.4); }
+    50%{ box-shadow:0 0 0 6px rgba(169,204,120,.2), 0 0 28px rgba(169,204,120,.6); }
+  }
+  .ability-btn:active{ transform:scale(.9); }
+  .ability-cd{
+    position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(rgba(0,0,0,.6) var(--pct, 100%), transparent 0);
+    pointer-events:none;
+  }
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:fixed; inset:0; z-index:50;
+    background:radial-gradient(circle at 50% 30%, rgba(40,50,42,.95), rgba(8,10,9,.97));
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .overlay.hidden{ display:none; }
+  .overlay-card{ max-width:380px; width:100%; text-align:center; }
+  .kicker{ color:var(--accent-bright); font-size:12.5px; font-weight:700; letter-spacing:.08em; margin-bottom:8px; }
+  .overlay-card h1{ font-size:34px; margin-bottom:4px; letter-spacing:-.01em; }
+  .overlay-card .creature-preview{
+    font-size:74px; margin:14px 0;
+    animation:preview-bob 2.4s ease-in-out infinite;
+    filter:drop-shadow(0 10px 18px rgba(0,0,0,.5));
+  }
+  @keyframes preview-bob{ 0%,100%{ transform:translateY(0) rotate(-2deg); } 50%{ transform:translateY(-10px) rotate(2deg); } }
+  .overlay-card p{ color:var(--ink-dim); font-size:14px; line-height:1.65; margin-bottom:24px; }
+  .overlay-card .stat-line{ font-size:13.5px; color:var(--ink-faint); margin-bottom:7px; }
+  .overlay-card .stat-line strong{ color:var(--ink); font-family:'Bitter', serif; }
+  .new-best{ color:var(--accent-bright) !important; }
+
+  .big-btn{
+    display:inline-block; border:none; cursor:pointer;
+    background:linear-gradient(180deg, var(--accent-bright), var(--accent));
+    color:#12180f;
+    padding:16px 40px; border-radius:30px; font-weight:800; font-size:16.5px;
+    font-family:'Bitter', serif; letter-spacing:.01em;
+    box-shadow:0 6px 0 #5d7a3f, 0 10px 22px rgba(0,0,0,.4);
+    transition:transform .08s ease, box-shadow .08s ease;
+  }
+  .big-btn:active{ transform:translateY(4px); box-shadow:0 2px 0 #5d7a3f, 0 4px 12px rgba(0,0,0,.4); }
+  .ghost-btn{
+    display:inline-block; margin-top:16px; color:var(--ink-dim); font-size:13px;
+    text-decoration:underline; cursor:pointer;
+  }
+
+  .controls-hint{
+    display:flex; justify-content:center; gap:16px; margin-top:28px;
+    font-size:11px; color:var(--ink-faint);
+  }
+  .controls-hint div{ display:flex; flex-direction:column; align-items:center; gap:5px; max-width:110px; }
+  .controls-hint .k{ font-size:22px; }
+
+  /* ---------- evolve flash ---------- */
+  .evolve-banner{
+    position:fixed; top:34%; left:0; right:0; z-index:40;
+    text-align:center; pointer-events:none;
+    opacity:0; transform:translateY(14px) scale(.9);
+  }
+  .evolve-banner.show{ animation:evolve-pop 2.1s ease forwards; }
+  @keyframes evolve-pop{
+    0%{ opacity:0; transform:translateY(14px) scale(.8); }
+    14%{ opacity:1; transform:translateY(0) scale(1.12); }
+    28%{ transform:translateY(0) scale(1); }
+    82%{ opacity:1; }
+    100%{ opacity:0; transform:translateY(-14px) scale(1); }
+  }
+  .evolve-banner .tag{ font-size:13px; color:var(--accent-bright); font-weight:700; letter-spacing:.08em; margin-bottom:2px; }
+  .evolve-banner .name{ font-size:42px; font-family:'Bitter', serif; font-weight:800; text-shadow:0 3px 16px rgba(0,0,0,.8); }
+  .evolve-banner .emoji{ font-size:72px; display:block; margin-top:4px; filter:drop-shadow(0 6px 16px rgba(0,0,0,.65)); }
+
+  /* ---------- biome toast ---------- */
+  .biome-toast{
+    position:fixed; top:88px; left:50%; z-index:22;
+    transform:translateX(-50%) translateY(-10px);
+    background:var(--glass); backdrop-filter:blur(8px); border:1px solid rgba(255,255,255,.1);
+    padding:6px 16px; border-radius:16px; font-size:12px; color:var(--ink-dim);
+    opacity:0; pointer-events:none;
+  }
+  .biome-toast.show{ animation:biome-pop 2.6s ease forwards; }
+  @keyframes biome-pop{
+    0%{ opacity:0; transform:translateX(-50%) translateY(-10px); }
+    15%{ opacity:1; transform:translateX(-50%) translateY(0); }
+    80%{ opacity:1; }
+    100%{ opacity:0; transform:translateX(-50%) translateY(-6px); }
+  }
+
+  /* ---------- token pill ---------- */
+  .token-pill{
+    display:flex; align-items:center; gap:5px;
+    padding:6px 12px; font-size:12.5px; font-weight:700; color:#ffd76a;
+    font-family:'Bitter', serif;
+  }
+
+  /* ---------- cryopod capture overlay ---------- */
+  .cryo-overlay{
+    position:fixed; inset:0; z-index:60;
+    background:rgba(5,7,6,.92);
+    display:none; align-items:center; justify-content:center; flex-direction:column;
+  }
+  .cryo-overlay.show{ display:flex; }
+  .cryo-pod{
+    width:100px; height:170px; border-radius:50px 50px 40px 40px;
+    background:linear-gradient(160deg, #3a4640, #171d19 70%);
+    border:3px solid #5ad9e6; position:relative;
+    box-shadow:0 0 30px rgba(90,217,230,.5), inset 0 0 30px rgba(90,217,230,.2);
+  }
+  .cryo-window{
+    position:absolute; top:26px; left:14px; right:14px; height:72px;
+    border-radius:36px; background:radial-gradient(circle, rgba(90,217,230,.5), rgba(20,30,28,.7));
+    border:2px solid rgba(90,217,230,.6);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .cryo-creature{
+    font-size:40px; transform:translateY(120px) scale(1.3); opacity:0;
+  }
+  .cryo-overlay.show .cryo-creature{ animation:cryo-suck 1.1s ease forwards .3s; }
+  @keyframes cryo-suck{
+    0%{ transform:translateY(120px) scale(1.3); opacity:1; }
+    70%{ transform:translateY(0) scale(.6); opacity:1; }
+    100%{ transform:translateY(0) scale(.3); opacity:0; }
+  }
+  .cryo-flash{
+    position:absolute; inset:0; border-radius:50px 50px 40px 40px;
+    background:#fff; opacity:0;
+  }
+  .cryo-overlay.show .cryo-flash{ animation:cryo-flash-anim .3s ease 1.3s; }
+  @keyframes cryo-flash-anim{ 0%{ opacity:0; } 40%{ opacity:.9; } 100%{ opacity:0; } }
+  .cryo-beam{
+    position:absolute; bottom:100%; left:50%; width:2px; height:0;
+    background:linear-gradient(180deg, transparent, #5ad9e6);
+    transform:translateX(-50%);
+  }
+  .cryo-overlay.show .cryo-beam{ animation:cryo-beam-anim 1.1s ease forwards .3s; }
+  @keyframes cryo-beam-anim{ 0%{ height:0; opacity:1; } 70%{ height:140px; opacity:1; } 100%{ height:140px; opacity:0; } }
+  .cryo-text{ margin-top:22px; text-align:center; opacity:0; }
+  .cryo-overlay.show .cryo-text{ animation:cryo-text-anim .6s ease forwards 1.5s; }
+  @keyframes cryo-text-anim{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+  .cryo-text .tag{ font-size:12px; color:#5ad9e6; font-weight:700; letter-spacing:.08em; margin-bottom:4px; }
+  .cryo-text .name{ font-size:24px; font-family:'Bitter', serif; font-weight:800; }
+
+  /* ---------- skins modal ---------- */
+  .skins-overlay{
+    position:fixed; inset:0; z-index:55;
+    background:rgba(8,10,9,.92);
+    display:none; align-items:center; justify-content:center; padding:20px;
+  }
+  .skins-overlay.show{ display:flex; }
+  .skins-box{
+    max-width:420px; width:100%; max-height:82vh; overflow-y:auto;
+    background:linear-gradient(180deg, var(--bg-panel), var(--bg-panel-2));
+    border:1px solid var(--line-bright); border-radius:18px; padding:22px;
+    box-shadow:0 24px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .skins-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+  .skins-head h3{ font-size:21px; letter-spacing:-.01em; background:linear-gradient(90deg, var(--ink), var(--accent-bright)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .skins-close{ background:none; border:1px solid var(--line-bright); color:var(--ink-dim); width:28px; height:28px; border-radius:8px; cursor:pointer; }
+  .skins-sub{ font-size:12.5px; color:var(--ink-faint); margin-bottom:18px; line-height:1.55; }
+  .skin-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .skin-card{
+    border:1px solid var(--line-bright); border-radius:16px; padding:16px 10px 13px;
+    text-align:center; cursor:pointer; background:var(--bg-panel-2); position:relative; overflow:hidden;
+    transition:transform .15s cubic-bezier(.2,.8,.3,1), border-color .2s ease, box-shadow .25s ease;
+  }
+  .skin-card::before{
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+    background:var(--sk-color, var(--accent)); opacity:.9;
+  }
+  .skin-card::after{
+    content:''; position:absolute; inset:0; pointer-events:none; opacity:0;
+    background:radial-gradient(circle at 50% 0%, var(--sk-glow, transparent), transparent 70%);
+    transition:opacity .3s ease;
+  }
+  .skin-card:active{ transform:scale(.94); }
+  .skin-card.locked{ opacity:.42; cursor:default; filter:grayscale(.55); }
+  .skin-card.equipped{ border-color:var(--sk-color, #5ad9e6); box-shadow:0 0 0 1px var(--sk-color, #5ad9e6), 0 8px 22px var(--sk-glow, transparent); }
+  .skin-card.equipped::after{ opacity:1; }
+  .skin-card .icon-badge{
+    width:56px; height:56px; border-radius:50%; margin:0 auto 9px;
+    display:flex; align-items:center; justify-content:center; font-size:28px;
+    background:radial-gradient(circle at 34% 28%, rgba(255,255,255,.1), rgba(0,0,0,.3) 75%);
+    border:2px solid var(--sk-color, var(--line-bright));
+    box-shadow:0 0 14px var(--sk-glow, transparent);
+    position:relative; z-index:1;
+  }
+  .skin-card.equipped .icon-badge{ animation:skin-pulse 1.8s ease-in-out infinite; }
+  @keyframes skin-pulse{
+    0%,100%{ box-shadow:0 0 14px var(--sk-glow, transparent); transform:scale(1); }
+    50%{ box-shadow:0 0 30px var(--sk-glow, transparent), 0 0 8px var(--sk-color, transparent); transform:scale(1.06); }
+  }
+  .skin-card .name{ font-size:12.5px; font-weight:700; position:relative; z-index:1; }
+  .skin-card .hint{ font-size:10px; color:var(--ink-faint); margin-top:4px; position:relative; z-index:1; }
+  .skin-card .rarity{
+    display:inline-block; font-size:8.5px; font-weight:800; letter-spacing:.07em; text-transform:uppercase;
+    padding:2.5px 8px; border-radius:8px; margin-top:6px; position:relative; z-index:1;
+    color:var(--sk-color); background:rgba(255,255,255,.05); border:1px solid var(--sk-color);
+  }
+  .skin-card .equipped-tag{
+    position:absolute; top:7px; right:7px; z-index:2;
+    font-size:8.5px; font-weight:800; letter-spacing:.03em;
+    background:var(--sk-color, #5ad9e6); color:#0c100d; padding:2.5px 7px; border-radius:7px;
+  }
+  .skin-open-btn{
+    position:fixed; top:16px; left:50%; transform:translateX(-50%); z-index:21;
+    font-size:11.5px; color:var(--ink-dim); padding:6px 14px; cursor:pointer;
+  }
+
+  .flash-hit{
+    position:fixed; inset:0; z-index:15; pointer-events:none; opacity:0;
+    background:radial-gradient(circle, transparent 40%, rgba(230,100,90,.35) 100%);
+  }
+  .flash-hit.show{ animation:hit-flash .4s ease; }
+  @keyframes hit-flash{ 0%{ opacity:1; } 100%{ opacity:0; } }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+<div class="flash-hit" id="flashHit"></div>
+
+<div class="hud">
+  <div class="hud-left">
+    <div class="pill-row">
+      <a class="back-link glass-pill" href="index.html">← Network</a>
+      <div class="mute-btn glass-pill" id="muteBtn">🔊</div>
+    </div>
+    <div class="hearts glass-pill" id="heartsRow"></div>
+  </div>
+  <div class="hud-right">
+    <div class="score-box glass-pill" id="scoreBox">0</div>
+    <div class="token-pill glass-pill" id="tokenPill">🪙 0</div>
+    <div class="tier-box glass-pill" id="tierBox">Raptor</div>
+  </div>
+</div>
+<div class="biome-toast" id="biomeToast"></div>
+<div class="skin-open-btn glass-pill" id="skinOpenBtn">🎨 Skins</div>
+<div class="xp-bar-wrap glass-pill"><div class="xp-bar-fill" id="xpFill"></div></div>
+
+<div class="vignette"></div>
+
+<div class="arrow-wrap">
+  <div class="arrow-btn" id="arrowDown">▼</div>
+</div>
+
+<div class="corner-right-wrap">
+  <div class="arrow-btn" id="arrowUp">▲</div>
+  <div class="ability-wrap">
+    <div class="ability-label glass-pill" id="abilityLabel">Evolve to unlock</div>
+    <div class="ability-btn" id="abilityBtn">
+      <div class="ability-cd" id="abilityCd" style="--pct:0%"></div>
+      <span id="abilityIcon">🔒</span>
+    </div>
+  </div>
+</div>
+
+<div class="evolve-banner" id="evolveBanner">
+  <div class="tag">EVOLVED</div>
+  <div class="name" id="evolveName">Direwolf</div>
+  <span class="emoji" id="evolveEmoji">🐺</span>
+</div>
+
+<div class="overlay" id="startOverlay">
+  <div class="overlay-card">
+    <div class="kicker">SURVIVOR NETWORK</div>
+    <h1>Wild Run</h1>
+    <div class="creature-preview" id="startPreview">🦖</div>
+    <p>Ride out on a raptor and outrun the map. Dodge the wreckage, grab the glowing XP, and evolve into bigger, rarer tames — all the way to a Wyvern.</p>
+    <button class="big-btn" onclick="startGame()">Start Run</button>
+    <div class="controls-hint">
+      <div><span class="k">👆</span>Tap top / bottom half of the screen to switch lanes</div>
+      <div><span class="k">⚡</span>Tap the round button for your special move once unlocked</div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="gameOverOverlay">
+  <div class="overlay-card">
+    <div class="kicker" style="color:#e6645a;">RUN OVER</div>
+    <h1 id="finalTierBig">Raptor</h1>
+    <div class="creature-preview" id="finalEmoji">🦖</div>
+    <div class="stat-line">Final score: <strong id="finalScore">0</strong></div>
+    <div class="stat-line">Best score on this device: <strong id="bestScore">0</strong></div>
+    <button class="big-btn" onclick="startGame()" style="margin-top:18px;">Run Again</button>
+    <div><a class="ghost-btn" href="index.html">Back to Survivor Network</a></div>
+  </div>
+</div>
+
+<div class="skins-overlay" id="skinsOverlay">
+  <div class="skins-box">
+    <div class="skins-head"><h3>Skins</h3><button class="skins-close" onclick="closeSkins()">✕</button></div>
+    <div class="skins-sub">Find a skin crate hidden in its matching biome to unlock it permanently. Tap an owned skin to equip it.</div>
+    <div class="skin-grid" id="skinGrid"></div>
+  </div>
+</div>
+
+<div class="cryo-overlay" id="cryoOverlay">
+  <div class="cryo-pod">
+    <div class="cryo-beam"></div>
+    <div class="cryo-window"><span class="cryo-creature" id="cryoCreature">🦖</span></div>
+    <div class="cryo-flash"></div>
+  </div>
+  <div class="cryo-text">
+    <div class="tag">SKIN UNLOCKED</div>
+    <div class="name" id="cryoName">Ghost</div>
+  </div>
+</div>
+
+<script>
+  // ================= AUDIO (procedural, no files) =================
+  var AudioCtx = window.AudioContext || window.webkitAudioContext;
+  var actx = null;
+  var muted = (function(){ try { return localStorage.getItem('wildrun_muted') === '1'; } catch(e){ return false; } })();
+
+  function ensureAudio(){
+    if (!actx && AudioCtx){ try { actx = new AudioCtx(); } catch(e){} }
+    if (actx && actx.state === 'suspended') actx.resume();
+  }
+
+  function tone(freq, dur, type, vol, delay){
+    if (muted || !actx) return;
+    var t0 = actx.currentTime + (delay || 0);
+    var osc = actx.createOscillator();
+    var gain = actx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol || 0.18, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(gain).connect(actx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  }
+
+  function sweep(f1, f2, dur, type, vol){
+    if (muted || !actx) return;
+    var t0 = actx.currentTime;
+    var osc = actx.createOscillator();
+    var gain = actx.createGain();
+    osc.type = type || 'sawtooth';
+    osc.frequency.setValueAtTime(f1, t0);
+    osc.frequency.exponentialRampToValueAtTime(f2, t0 + dur);
+    gain.gain.setValueAtTime(vol || 0.14, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(gain).connect(actx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
+  }
+
+  function sfxCoin(){ tone(880, 0.09, 'square', 0.14); tone(1320, 0.12, 'square', 0.12, 0.05); }
+  function sfxHit(){ sweep(180, 60, 0.28, 'sawtooth', 0.2); }
+  function sfxSwitch(){ tone(340, 0.06, 'triangle', 0.06); }
+  function sfxAbility(){ sweep(220, 900, 0.35, 'sawtooth', 0.16); }
+  function sfxButton(){ tone(520, 0.05, 'square', 0.08); }
+  function sfxGameOver(){ sweep(380, 90, 0.7, 'sawtooth', 0.18); }
+  function sfxEvolve(){
+    var notes = [523, 659, 784, 1046];
+    notes.forEach(function(f, i){ tone(f, 0.22, 'triangle', 0.15, i * 0.09); });
+  }
+
+  var muteBtn = document.getElementById('muteBtn');
+  function refreshMuteBtn(){ muteBtn.textContent = muted ? '🔇' : '🔊'; }
+  refreshMuteBtn();
+  muteBtn.addEventListener('pointerdown', function(e){
+    e.stopPropagation();
+    muted = !muted;
+    try { localStorage.setItem('wildrun_muted', muted ? '1' : '0'); } catch(err){}
+    refreshMuteBtn();
+    ensureAudio();
+  });
+
+  // ================= SETUP =================
+  var canvas = document.getElementById('gameCanvas');
+  var ctx = canvas.getContext('2d');
+
+  function resizeCanvas(){
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = window.innerWidth * dpr;
+    canvas.height = window.innerHeight * dpr;
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    W = window.innerWidth;
+    H = window.innerHeight;
+  }
+  var W = window.innerWidth, H = window.innerHeight;
+  window.addEventListener('resize', resizeCanvas);
+
+  // ================= TIERS =================
+  var TIERS = [
+    { name: 'Raptor',       emoji: '🦖', xpNeeded: 0,    maxHearts: 3,  speedMul: 1.00, ability: null,
+      abilityIcon: '🔒', abilityLabel: 'Evolve to unlock', abilityDuration: 0, abilityCooldown: 0 },
+    { name: 'Direwolf',     emoji: '🐺', xpNeeded: 150,  maxHearts: 4,  speedMul: 1.08, ability: 'howl',
+      abilityIcon: '🌪️', abilityLabel: 'Howl: clear your lane', abilityDuration: 0, abilityCooldown: 6000 },
+    { name: 'Sabertooth',   emoji: '🐆', xpNeeded: 350,  maxHearts: 5,  speedMul: 1.16, ability: 'pounce',
+      abilityIcon: '💨', abilityLabel: 'Pounce: dash + 2x score', abilityDuration: 2200, abilityCooldown: 8000 },
+    { name: 'Woolly Rhino', emoji: '🦏', xpNeeded: 600,  maxHearts: 6,  speedMul: 1.22, ability: 'charge',
+      abilityIcon: '🛡️', abilityLabel: 'Charge: smash through obstacles', abilityDuration: 3000, abilityCooldown: 10000 },
+    { name: 'Argentavis',   emoji: '🦅', xpNeeded: 900,  maxHearts: 7,  speedMul: 1.30, ability: 'flight',
+      abilityIcon: '🌤️', abilityLabel: 'Flight: soar over everything', abilityDuration: 3200, abilityCooldown: 10000 },
+    { name: 'Wyvern',       emoji: '🐉', xpNeeded: 1300, maxHearts: 15, speedMul: 1.40, ability: 'inferno',
+      abilityIcon: '🔥', abilityLabel: 'Inferno Breath: torch the run', abilityDuration: 4000, abilityCooldown: 14000 }
+  ];
+
+  // visual definitions per tier: how to draw the creature
+  var VIS = [
+    { kind:'runner', size:44, colors:{ body:'#8fae5e', belly:'#c9dba0', accent:'#4f6b38' }, opts:{ spikes:true } },
+    { kind:'runner', size:48, colors:{ body:'#71717c', belly:'#a2a2ae', accent:'#e9e3d3' }, opts:{ ears:true } },
+    { kind:'runner', size:50, colors:{ body:'#d99a4e', belly:'#f3d29c', accent:'#3a2a1a' }, opts:{ stripes:true } },
+    { kind:'runner', size:62, colors:{ body:'#a68a6b', belly:'#dccbb0', accent:'#efe7d8' }, opts:{ horn:true, bulk:true } },
+    { kind:'flyer',  size:56, colors:{ body:'#8a6b4e', belly:'#c9ac86', accent:'#5a4432' }, opts:{} },
+    { kind:'flyer',  size:64, colors:{ body:'#8a5cf0', belly:'#c9b3ff', accent:'#5ad9e6' }, opts:{ crest:true, breath:true } }
+  ];
+
+  // biomes shift as you evolve — purely decorative palette + decoration swap
+  var BIOMES = [
+    { name:'Shallow Plains', sky:['#1c2b30','#33403a','#5a4f38'], ridgeFar:'#28352e', ridgeNear:'#1e2a23', ground:['#232c26','#1a221d','#141b17'], deco:'grass', sun:'rgba(255,225,180,0.9)', weather:'dust' },
+    { name:'Redwood Reach',  sky:['#12241f','#1f3a2c','#2f4a2a'], ridgeFar:'#173225', ridgeNear:'#10231a', ground:['#17251d','#101a14','#0c1310'], deco:'ferns', sun:'rgba(200,230,180,0.7)', weather:'pollen' },
+    { name:'Ashen Badlands', sky:['#2a1c16','#4a2c1c','#6b3a20'], ridgeFar:'#3a2418','ridgeNear':'#2a190f', ground:['#2e2016','#1f150e','#160f0a'], deco:'bones', sun:'rgba(255,180,110,0.9)', weather:'embers' },
+    { name:'Crystal Cave',   sky:['#150a26','#241041','#3a1a5c'], ridgeFar:'#2a1345', ridgeNear:'#190a2c', ground:['#1c0f30','#130a20','#0c0616'], deco:'crystal', sun:'rgba(180,120,255,0.65)', weather:'spores' },
+    { name:'Storm Peaks',    sky:['#0f1a24','#1c2f42','#2c4358'], ridgeFar:'#182838', ridgeNear:'#0f1c28', ground:['#141f28','#0e161c','#0a1014'], deco:'snow', sun:'rgba(190,220,255,0.55)', weather:'rain' },
+    { name:'Void Skies',     sky:['#0a0716','#170a2c','#2b1350'], ridgeFar:'#1a0d35', ridgeNear:'#0f0722', ground:['#150a28','#0d051a','#08040f'], deco:'void', sun:'rgba(160,90,240,0.7)', weather:'ash' }
+  ];
+  function currentBiome(){ return BIOMES[player.tier]; }
+  var weatherParticles = [];
+
+  // ================= SKINS =================
+  var SKINS = [
+    { id:'zombie',    name:'Zombie',     biome:0, icon:'🧟', color:'#9fce5e', glow:'rgba(120,150,70,0.55)', accessory:'patch',  rarity:'Common',
+      tint:'rgba(146,178,64,0.68)',  tintShade:'rgba(58,78,26,0.4)' },
+    { id:'poison',    name:'Poison',     biome:1, icon:'☠️', color:'#6bef78', glow:'rgba(120,220,90,0.55)', accessory:'drip',   rarity:'Uncommon',
+      tint:'rgba(80,232,96,0.72)',   tintShade:'rgba(18,110,40,0.42)', tintGlow:'rgba(170,255,140,0.3)' },
+    { id:'bone',      name:'Bone',       biome:2, icon:'💀', color:'#f2ead2', glow:'rgba(230,220,200,0.5)', accessory:'ribs',   rarity:'Rare',
+      tint:'rgba(230,220,195,0.82)', tintShade:'rgba(120,108,86,0.28)' },
+    { id:'witch',     name:'Witch Hat',  biome:3, icon:'🎃', color:'#b17bff', glow:'rgba(150,90,220,0.55)', accessory:'hat',    rarity:'Epic',
+      tint:'rgba(140,80,220,0.65)',  tintShade:'rgba(48,16,84,0.4)' },
+    { id:'lightning', name:'Lightning',  biome:4, icon:'⚡', color:'#7fcaff', glow:'rgba(120,190,255,0.6)', accessory:'spark',  rarity:'Epic',
+      tint:'rgba(120,195,255,0.62)', tintShade:'rgba(30,90,170,0.32)', tintGlow:'rgba(210,240,255,0.32)' },
+    { id:'ghost',     name:'Ghost',      biome:5, icon:'👻', color:'#e4f4ff', glow:'rgba(210,235,255,0.55)', accessory:'ghost', rarity:'Legendary',
+      tint:'rgba(220,240,255,0.55)', tintShade:'rgba(150,180,210,0.2)', tintGlow:'rgba(255,255,255,0.28)' }
+  ];
+
+  var TOKEN_KEY = 'ew_tokens'; // shared with the main Survivor Network site
+  var SKINS_KEY = 'ew_skins';
+  var EQUIP_KEY = 'ew_equipped_skin';
+
+  function getTokens(){ try { return parseInt(localStorage.getItem(TOKEN_KEY) || '0', 10); } catch(e){ return 0; } }
+  function addTokens(n){
+    var v = getTokens() + n;
+    try { localStorage.setItem(TOKEN_KEY, v.toString()); } catch(e){}
+    return v;
+  }
+  function getOwnedSkins(){
+    try { return JSON.parse(localStorage.getItem(SKINS_KEY) || '[]'); } catch(e){ return []; }
+  }
+  function ownSkin(id){
+    var owned = getOwnedSkins();
+    if (owned.indexOf(id) === -1){
+      owned.push(id);
+      try { localStorage.setItem(SKINS_KEY, JSON.stringify(owned)); } catch(e){}
+    }
+  }
+  function getEquippedSkin(){ try { return localStorage.getItem(EQUIP_KEY) || ''; } catch(e){ return ''; } }
+  function setEquippedSkin(id){ try { localStorage.setItem(EQUIP_KEY, id); } catch(e){} }
+  function skinById(id){
+    for (var i = 0; i < SKINS.length; i++) if (SKINS[i].id === id) return SKINS[i];
+    return null;
+  }
+
+  document.getElementById('skinOpenBtn').addEventListener('pointerdown', function(e){
+    e.stopPropagation();
+    openSkins();
+  });
+  document.getElementById('cryoOverlay').addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+  document.getElementById('skinsOverlay').addEventListener('pointerdown', function(e){ e.stopPropagation(); });
+
+  function openSkins(){
+    var wasPlaying = state === 'playing';
+    if (wasPlaying) state = 'paused';
+    var grid = document.getElementById('skinGrid');
+    var owned = getOwnedSkins();
+    var equipped = getEquippedSkin();
+    var noneEq = equipped === '';
+    var html = '<div class="skin-card' + (noneEq ? ' equipped' : '') + '" style="--sk-color:#9fb08a;--sk-glow:rgba(160,180,140,0.35);" onclick="equipSkin(\'\')">' +
+      (noneEq ? '<div class="equipped-tag">✓ ON</div>' : '') +
+      '<div class="icon-badge">🚫</div><div class="name">None</div><div class="hint">Default look</div></div>';
+    SKINS.forEach(function(sk){
+      var have = owned.indexOf(sk.id) !== -1;
+      var isEq = equipped === sk.id;
+      var cls = 'skin-card' + (!have ? ' locked' : '') + (isEq ? ' equipped' : '');
+      var hint = have ? '' : ('🔒 Find in ' + BIOMES[sk.biome].name);
+      html += '<div class="' + cls + '" style="--sk-color:' + sk.color + ';--sk-glow:' + sk.glow + ';" ' +
+        (have ? 'onclick="equipSkin(\'' + sk.id + '\')"' : '') + '>' +
+        (isEq ? '<div class="equipped-tag">✓ ON</div>' : '') +
+        '<div class="icon-badge">' + sk.icon + '</div>' +
+        '<div class="name">' + sk.name + '</div>' +
+        (have ? '<span class="rarity">' + sk.rarity + '</span>' : '<div class="hint">' + hint + '</div>') +
+        '</div>';
+    });
+    grid.innerHTML = html;
+    document.getElementById('skinsOverlay').classList.add('show');
+  }
+  function closeSkins(){
+    document.getElementById('skinsOverlay').classList.remove('show');
+    if (state === 'paused') state = 'playing';
+  }
+  function equipSkin(id){
+    setEquippedSkin(id);
+    sfxButton();
+    openSkins();
+  }
+
+  function triggerCryopodCapture(skin){
+    ownSkin(skin.id);
+    var wasPlaying = state === 'playing';
+    if (wasPlaying) state = 'paused';
+    document.getElementById('cryoCreature').textContent = currentTier().emoji;
+    document.getElementById('cryoName').textContent = skin.name + ' ' + currentTier().name;
+    var overlay = document.getElementById('cryoOverlay');
+    overlay.classList.remove('show'); void overlay.offsetWidth; overlay.classList.add('show');
+    sfxEvolve();
+    setTimeout(function(){
+      overlay.classList.remove('show');
+      if (wasPlaying) state = 'playing';
+    }, 2400);
+  }
+
+
+  var BEST_KEY = 'wildrun_best_score';
+  function getBest(){ try { return parseInt(localStorage.getItem(BEST_KEY) || '0', 10); } catch(e){ return 0; } }
+  function setBest(v){ try { localStorage.setItem(BEST_KEY, v.toString()); } catch(e){} }
+
+  // ================= GAME STATE =================
+  var state = 'start';
+  var player, obstacles, gems, particles, dustTimer, skinTrailTimer, lastTime, spawnTimer, gemTimer, elapsed, screenShake;
+  var clouds = [];
+  var fireflies = [];
+
+  function laneCount(){ return 3; }
+  function playAreaTop(){ return H * 0.30; }
+  function playAreaBottom(){ return H * 0.90; }
+  function laneY(i){
+    var top = playAreaTop(), bottom = playAreaBottom();
+    var h = (bottom - top) / laneCount();
+    return top + h * (i + 0.5);
+  }
+  function skyY(){ return playAreaTop() - 50; }
+
+  function resetGame(){
+    player = {
+      x: 0, lane: 1, y: 0, tier: 0, xp: 0, hearts: 3, maxHearts: 3,
+      flying: false, invincibleUntil: 0, scoreMulUntil: 0, abilityUntil: 0,
+      abilityReadyAt: 0, hitFlashUntil: 0, bobPhase: 0, runPhase: 0,
+      switchAnim: 0, tiltDir: 0, comboCount: 0, comboResetAt: 0
+    };
+    obstacles = [];
+    gems = [];
+    particles = [];
+    elapsed = 0;
+    spawnTimer = 0;
+    gemTimer = 0;
+    dustTimer = 0;
+    skinTrailTimer = 0;
+    screenShake = 0;
+    window.score = 0;
+    biomeNameShown = -1;
+    if (clouds.length === 0){
+      for (var i = 0; i < 5; i++){
+        clouds.push({ x: Math.random() * W, y: H * (0.06 + Math.random() * 0.14), s: 0.6 + Math.random() * 0.8, spd: 6 + Math.random() * 10 });
+      }
+    }
+    if (fireflies.length === 0){
+      for (var j = 0; j < 14; j++){
+        fireflies.push({
+          x: Math.random() * W,
+          y: playAreaTop() + Math.random() * (playAreaBottom() - playAreaTop()),
+          r: 1 + Math.random() * 1.8,
+          drift: Math.random() * 20,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
+  }
+
+  function currentTier(){ return TIERS[player.tier]; }
+  function currentVis(){ return VIS[player.tier]; }
+  function xpForNext(){ return player.tier >= TIERS.length - 1 ? null : TIERS[player.tier + 1].xpNeeded; }
+
+  // ================= INPUT =================
+  function laneUp(){
+    if (player.lane > 0){ player.lane -= 1; player.switchAnim = 1; player.tiltDir = -1; sfxSwitch(); }
+  }
+  function laneDown(){
+    if (player.lane < laneCount() - 1){ player.lane += 1; player.switchAnim = 1; player.tiltDir = 1; sfxSwitch(); }
+  }
+
+  canvas.addEventListener('pointerdown', function(e){
+    ensureAudio();
+    if (state !== 'playing') return;
+    var y = e.clientY;
+    if (y < H * 0.5) laneUp(); else laneDown();
+  });
+
+  document.addEventListener('keydown', function(e){
+    ensureAudio();
+    if (state !== 'playing') return;
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') laneUp();
+    if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') laneDown();
+    if (e.key === ' ') { e.preventDefault(); triggerAbility(); }
+  });
+
+  function spawnRipple(btn, e){
+    var rect = btn.getBoundingClientRect();
+    var r = document.createElement('div');
+    r.className = 'arrow-ripple';
+    var x = (e.clientX || rect.left + rect.width / 2) - rect.left - 10;
+    var y = (e.clientY || rect.top + rect.height / 2) - rect.top - 10;
+    r.style.left = x + 'px'; r.style.top = y + 'px';
+    r.style.width = '20px'; r.style.height = '20px';
+    btn.appendChild(r);
+    setTimeout(function(){ r.remove(); }, 520);
+  }
+
+  document.getElementById('arrowUp').addEventListener('pointerdown', function(e){
+    e.stopPropagation(); ensureAudio(); spawnRipple(this, e); if (state === 'playing') laneUp();
+  });
+  document.getElementById('arrowDown').addEventListener('pointerdown', function(e){
+    e.stopPropagation(); ensureAudio(); spawnRipple(this, e); if (state === 'playing') laneDown();
+  });
+
+  document.getElementById('abilityBtn').addEventListener('pointerdown', function(e){
+    e.stopPropagation();
+    ensureAudio();
+    triggerAbility();
+  });
+
+  function triggerAbility(){
+    var t = currentTier();
+    if (!t.ability) return;
+    var now = performance.now();
+    if (now < player.abilityReadyAt) return;
+
+    player.abilityReadyAt = now + t.abilityCooldown;
+    sfxAbility();
+
+    if (t.ability === 'howl'){
+      obstacles = obstacles.filter(function(o){
+        if (o.lane === player.lane && !player.flying){
+          spawnBurst(o.x, laneY(o.lane), '#a9cc78', 12);
+          return false;
+        }
+        return true;
+      });
+    } else if (t.ability === 'pounce'){
+      player.invincibleUntil = now + t.abilityDuration;
+      player.scoreMulUntil = now + t.abilityDuration;
+    } else if (t.ability === 'charge'){
+      player.invincibleUntil = now + t.abilityDuration;
+    } else if (t.ability === 'flight'){
+      player.flying = true;
+      player.abilityUntil = now + t.abilityDuration;
+      player.invincibleUntil = now + t.abilityDuration;
+    } else if (t.ability === 'inferno'){
+      player.invincibleUntil = now + t.abilityDuration;
+      player.scoreMulUntil = now + t.abilityDuration;
+      player.flying = false;
+      screenShake = 20;
+      obstacles.forEach(function(o){ spawnBurst(o.x, laneY(o.lane), '#f0954a', 14); });
+      obstacles = [];
+    }
+  }
+
+  // ================= SPAWNING =================
+  var OBSTACLE_TYPES = ['rock', 'log', 'spike'];
+  function spawnObstacle(){
+    var lanesBlocked = {};
+    obstacles.forEach(function(o){ if (o.x > W - 150) lanesBlocked[o.lane] = true; });
+    var openLanes = [0, 1, 2].filter(function(l){ return !lanesBlocked[l]; });
+    if (openLanes.length === 0) return;
+    var howMany = Math.random() < 0.35 && openLanes.length > 1 ? 2 : 1;
+    if (howMany >= openLanes.length) howMany = openLanes.length - 1;
+    if (howMany < 1) howMany = 1;
+    shuffle(openLanes);
+    for (var i = 0; i < howMany; i++){
+      obstacles.push({
+        x: W + 60 + i * 40, lane: openLanes[i],
+        type: OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)],
+        big: Math.random() < 0.25,
+        rot: (Math.random() - 0.5) * 0.3
+      });
+    }
+  }
+
+  function spawnGem(){
+    var lane = Math.floor(Math.random() * 3);
+    var roll = Math.random();
+    var biomeSkin = SKINS[player.tier];
+    var alreadyOwned = biomeSkin && getOwnedSkins().indexOf(biomeSkin.id) !== -1;
+
+    if (biomeSkin && !alreadyOwned && roll < 0.05){
+      gems.push({ x: W + 60, lane: lane, spin: 0, kind: 'skin', skin: biomeSkin });
+    } else if (roll < 0.14){
+      gems.push({ x: W + 60, lane: lane, spin: 0, kind: 'token' });
+    } else {
+      gems.push({ x: W + 60, lane: lane, spin: 0, kind: 'xp' });
+    }
+  }
+
+  function shuffle(arr){
+    for (var i = arr.length - 1; i > 0; i--){
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+  }
+
+  function spawnBurst(x, y, color, count){
+    for (var i = 0; i < (count || 10); i++){
+      particles.push({
+        x: x, y: y,
+        vx: (Math.random() - 0.5) * 220, vy: (Math.random() - 0.5) * 220 - 40,
+        life: 500 + Math.random() * 300, age: 0, r: 2 + Math.random() * 2, color: color
+      });
+    }
+  }
+
+  function spawnDust(x, y){
+    particles.push({
+      x: x + (Math.random() - 0.5) * 10, y: y,
+      vx: -80 - Math.random() * 40, vy: -20 - Math.random() * 20,
+      life: 300 + Math.random() * 150, age: 0, r: 2 + Math.random() * 2, color: 'rgba(180,170,140,0.5)'
+    });
+  }
+
+  function spawnSkinTrail(x, y, skin){
+    var c = skin.glow.replace(/[\d.]+\)$/, (0.75 + Math.random() * 0.2) + ')');
+    particles.push({
+      x: x + (Math.random() - 0.5) * 14, y: y + (Math.random() - 0.5) * 16,
+      vx: -60 - Math.random() * 50, vy: -30 - Math.random() * 40,
+      life: 380 + Math.random() * 220, age: 0, r: 1.5 + Math.random() * 2, color: c
+    });
+  }
+
+  function showCombo(x, y, text){
+    var el = document.createElement('div');
+    el.className = 'combo-pop';
+    el.textContent = text;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    document.body.appendChild(el);
+    requestAnimationFrame(function(){ el.classList.add('show'); });
+    setTimeout(function(){ el.remove(); }, 950);
+  }
+
+  // ================= UPDATE =================
+  function update(dt){
+    var now = performance.now();
+    elapsed += dt;
+
+    var speed = (125 + Math.min(190, elapsed * 0.0045)) * currentTier().speedMul;
+
+    if (player.flying && now > player.abilityUntil) player.flying = false;
+
+    var targetY = player.flying ? skyY() : laneY(player.lane);
+    player.y += (targetY - player.y) * Math.min(1, dt / 90);
+    player.bobPhase += dt * 0.006;
+    player.runPhase += dt * 0.012 * (speed / 220);
+    if (player.switchAnim > 0) player.switchAnim = Math.max(0, player.switchAnim - dt / 220);
+
+    var scoring = now < player.scoreMulUntil ? 3 : 1;
+    window.score += dt * 0.01 * scoring * (1 + player.tier * 0.15);
+
+    dustTimer -= dt;
+    if (dustTimer <= 0 && !player.flying){
+      spawnDust(player.x - 14, player.y + 26);
+      dustTimer = 90;
+    }
+
+    skinTrailTimer -= dt;
+    if (skinTrailTimer <= 0){
+      var eqSkin = skinById(getEquippedSkin());
+      if (eqSkin){
+        spawnSkinTrail(player.x - 12, player.y, eqSkin);
+        skinTrailTimer = 55;
+      } else {
+        skinTrailTimer = 200;
+      }
+    }
+
+    // clouds
+    clouds.forEach(function(c){
+      c.x -= c.spd * (dt / 1000);
+      if (c.x < -80) c.x = W + 80;
+    });
+
+    spawnTimer -= dt;
+    var spawnInterval = Math.max(900, 1900 - elapsed * 0.022);
+    if (spawnTimer <= 0){ spawnObstacle(); spawnTimer = spawnInterval; }
+    gemTimer -= dt;
+    if (gemTimer <= 0){ spawnGem(); gemTimer = 700 + Math.random() * 500; }
+
+    for (var i = obstacles.length - 1; i >= 0; i--){
+      var o = obstacles[i];
+      o.x -= speed * (dt / 1000);
+      if (o.x < -60){ obstacles.splice(i, 1); continue; }
+      if (Math.abs(o.x - player.x) < 34){
+        var hitting = (!player.flying && o.lane === player.lane);
+        if (hitting){
+          if (now < player.invincibleUntil){
+            spawnBurst(o.x, laneY(o.lane), '#f0954a', 10);
+            obstacles.splice(i, 1);
+            continue;
+          } else {
+            takeDamage();
+            spawnBurst(o.x, laneY(o.lane), '#e6645a', 12);
+            obstacles.splice(i, 1);
+            continue;
+          }
+        }
+      }
+    }
+
+    for (var g = gems.length - 1; g >= 0; g--){
+      var gm = gems[g];
+      gm.x -= speed * (dt / 1000);
+      gm.spin += dt * 0.01;
+      if (gm.x < -40){ gems.splice(g, 1); continue; }
+      var sameLane = player.flying ? false : gm.lane === player.lane;
+      if (sameLane && Math.abs(gm.x - player.x) < 34){
+        if (gm.kind === 'skin'){
+          spawnBurst(gm.x, laneY(gm.lane), '#5ad9e6', 16);
+          triggerCryopodCapture(gm.skin);
+        } else if (gm.kind === 'token'){
+          addTokens(15);
+          window.score += 15;
+          spawnBurst(gm.x, laneY(gm.lane), '#ffd76a', 10);
+          sfxCoin();
+        } else {
+          collectGem();
+          spawnBurst(gm.x, laneY(gm.lane), '#5ad9e6', 8);
+        }
+        gems.splice(g, 1);
+      }
+    }
+
+    for (var p = particles.length - 1; p >= 0; p--){
+      var pt = particles[p];
+      pt.age += dt;
+      if (pt.age > pt.life){ particles.splice(p, 1); continue; }
+      pt.x += pt.vx * (dt / 1000);
+      pt.y += pt.vy * (dt / 1000);
+      pt.vy += 420 * (dt / 1000);
+    }
+
+    if (screenShake > 0) screenShake = Math.max(0, screenShake - dt * 0.05);
+
+    updateHUD();
+  }
+
+  function takeDamage(){
+    player.hearts -= 1;
+    player.hitFlashUntil = performance.now() + 900;
+    player.invincibleUntil = performance.now() + 900;
+    screenShake = 12;
+    sfxHit();
+    var el = document.getElementById('flashHit');
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+    if (player.hearts <= 0) endGame();
+  }
+
+  function collectGem(){
+    player.xp += 12;
+    window.score += 20;
+    addTokens(2);
+    sfxCoin();
+
+    var now = performance.now();
+    if (now < player.comboResetAt) player.comboCount += 1; else player.comboCount = 1;
+    player.comboResetAt = now + 1400;
+    if (player.comboCount >= 3){
+      showCombo(player.x + W * 0.02, player.y - 40, player.comboCount + 'x combo!');
+    }
+
+    var need = xpForNext();
+    if (need !== null && player.xp >= need) evolve();
+  }
+
+  function evolve(){
+    player.tier = Math.min(TIERS.length - 1, player.tier + 1);
+    var t = currentTier();
+    player.maxHearts = t.maxHearts;
+    player.hearts = player.maxHearts;
+    player.abilityReadyAt = 0;
+    screenShake = 16;
+    sfxEvolve();
+    showEvolveBanner(t);
+    spawnBurst(player.x, player.y, '#a9cc78', 24);
+  }
+
+  function showEvolveBanner(t){
+    var banner = document.getElementById('evolveBanner');
+    document.getElementById('evolveName').textContent = t.name;
+    document.getElementById('evolveEmoji').textContent = t.emoji;
+    banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show');
+  }
+
+  // ================= HUD =================
+  function updateHUD(){
+    document.getElementById('scoreBox').textContent = Math.floor(window.score);
+    document.getElementById('tierBox').textContent = currentTier().name;
+    document.getElementById('tokenPill').textContent = '🪙 ' + getTokens();
+
+    var need = xpForNext();
+    var fill = document.getElementById('xpFill');
+    if (need === null){ fill.style.width = '100%'; }
+    else {
+      var prevNeed = TIERS[player.tier].xpNeeded;
+      var pct = ((player.xp - prevNeed) / (need - prevNeed)) * 100;
+      fill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+    }
+
+    var heartsRow = document.getElementById('heartsRow');
+    var html = '';
+    for (var i = 0; i < player.maxHearts; i++){
+      html += heartSVG(i < player.hearts);
+    }
+    heartsRow.innerHTML = html;
+
+    var t = currentTier();
+    var abilityIcon = document.getElementById('abilityIcon');
+    var abilityLabel = document.getElementById('abilityLabel');
+    var abilityBtnEl = document.getElementById('abilityBtn');
+    var cdEl = document.getElementById('abilityCd');
+
+    if (!t.ability){
+      abilityIcon.textContent = '🔒';
+      abilityLabel.textContent = 'Evolve to unlock a special move';
+      abilityBtnEl.classList.remove('ready');
+      cdEl.style.setProperty('--pct', '100%');
+    } else {
+      abilityIcon.textContent = t.abilityIcon;
+      abilityLabel.textContent = t.abilityLabel;
+      var now = performance.now();
+      var remaining = Math.max(0, player.abilityReadyAt - now);
+      var pct = t.abilityCooldown > 0 ? (remaining / t.abilityCooldown) * 100 : 0;
+      cdEl.style.setProperty('--pct', pct + '%');
+      if (remaining <= 0) abilityBtnEl.classList.add('ready'); else abilityBtnEl.classList.remove('ready');
+    }
+  }
+
+  function heartSVG(full){
+    var c = full ? '#e6645a' : '#3a453d';
+    return '<svg class="heart-icon" viewBox="0 0 24 24"><path fill="' + c + '" d="M12 21s-7.5-4.7-10.3-9.1C-0.4 8.6 1.6 4.8 5.4 4.3c2-.3 3.9.6 5 2.2 1.1-1.6 3-2.5 5-2.2 3.8.5 5.8 4.3 3.7 7.6C19.5 16.3 12 21 12 21z"/></svg>';
+  }
+
+  // ================= DRAW =================
+  function draw(){
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    if (screenShake > 0){
+      ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
+    }
+
+    drawSky();
+    drawSunFlare();
+    drawClouds();
+    drawMountains();
+    drawGround();
+    drawFireflies();
+    drawWeather();
+    drawLightPool();
+    drawLanes();
+    drawGems();
+    drawObstacles();
+    drawHeroGlow();
+    drawPlayer();
+    drawParticles();
+    if (state === 'playing' && performance.now() < player.scoreMulUntil) drawSpeedLines();
+
+    ctx.restore();
+  }
+
+  function drawSunFlare(){
+    var sunX = W * 0.78, sunY = playAreaTop() * 0.42;
+    var biome = currentBiome();
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    var steps = [0.25, 0.45, 0.65, 0.85];
+    steps.forEach(function(t, i){
+      var fx = W * 0.5 + (sunX - W * 0.5) * t;
+      var fy = playAreaTop() * 0.5 + (sunY - playAreaTop() * 0.5) * t;
+      var r = 6 + i * 5;
+      var g = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
+      g.addColorStop(0, biome.sun.replace(/[\d.]+\)$/, (0.16 - i * 0.03) + ')'));
+      g.addColorStop(1, biome.sun.replace(/[\d.]+\)$/, '0)'));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(fx, fy, r, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.restore();
+  }
+
+  function drawHeroGlow(){
+    if (!player.x) return;
+    var vis = currentVis();
+    var biome = currentBiome();
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    var g = ctx.createRadialGradient(player.x - vis.size * 0.15, player.y - vis.size * 0.3, 2, player.x, player.y, vis.size * 1.1);
+    g.addColorStop(0, biome.sun.replace(/[\d.]+\)$/, '0.28)'));
+    g.addColorStop(1, biome.sun.replace(/[\d.]+\)$/, '0)'));
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(player.x, player.y, vis.size * 1.1, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // ---- weather: per-biome ambient particles for atmosphere ----
+  function ensureWeather(){
+    var target = 26;
+    while (weatherParticles.length < target){
+      weatherParticles.push(makeWeatherParticle(true));
+    }
+    while (weatherParticles.length > target){
+      weatherParticles.pop();
+    }
+  }
+  function makeWeatherParticle(randomX){
+    return {
+      x: randomX ? Math.random() * W : W + 20,
+      y: Math.random() * H,
+      speed: 0.5 + Math.random() * 1.5,
+      drift: (Math.random() - 0.5) * 0.6,
+      size: 1 + Math.random() * 2.5,
+      phase: Math.random() * Math.PI * 2
+    };
+  }
+  function drawWeather(){
+    var biome = currentBiome();
+    ensureWeather();
+    var type = biome.weather;
+
+    weatherParticles.forEach(function(p){
+      p.phase += 0.02;
+      if (type === 'rain'){
+        p.x -= 5.5 * p.speed;
+        p.y += 9 * p.speed;
+        if (p.y > H || p.x < -20){ p.x = Math.random() * W + W * 0.3; p.y = -10; }
+        ctx.strokeStyle = 'rgba(190,220,255,0.35)';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x - 5, p.y + 14); ctx.stroke();
+      } else if (type === 'embers'){
+        p.x -= 0.6 * p.speed; p.y -= 0.5 * p.speed + Math.sin(p.phase) * 0.3;
+        if (p.y < 0 || p.x < -20){ p.x = Math.random() * W; p.y = H + 10; }
+        ctx.fillStyle = 'rgba(255,140,60,' + (0.4 + Math.sin(p.phase) * 0.3) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 0.7, 0, Math.PI * 2); ctx.fill();
+      } else if (type === 'spores'){
+        p.x -= 0.4 * p.speed; p.y += Math.sin(p.phase) * 0.4;
+        if (p.x < -20){ p.x = W + 10; p.y = Math.random() * H; }
+        ctx.fillStyle = 'rgba(190,140,255,' + (0.35 + Math.sin(p.phase) * 0.25) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+      } else if (type === 'ash'){
+        p.x -= 0.5 * p.speed; p.y += 0.3 * p.speed + Math.sin(p.phase) * 0.3;
+        if (p.y > H || p.x < -20){ p.x = Math.random() * W; p.y = -10; }
+        ctx.fillStyle = 'rgba(180,150,230,' + (0.3 + Math.sin(p.phase) * 0.2) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 0.8, 0, Math.PI * 2); ctx.fill();
+      } else if (type === 'pollen'){
+        p.x -= 0.35 * p.speed; p.y += Math.sin(p.phase) * 0.5;
+        if (p.x < -20){ p.x = W + 10; p.y = Math.random() * H; }
+        ctx.fillStyle = 'rgba(220,235,190,' + (0.3 + Math.sin(p.phase) * 0.2) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 0.8, 0, Math.PI * 2); ctx.fill();
+      } else {
+        p.x -= 0.3 * p.speed; p.y += Math.sin(p.phase) * 0.2;
+        if (p.x < -20){ p.x = W + 10; p.y = Math.random() * H; }
+        ctx.fillStyle = 'rgba(230,220,190,' + (0.18 + Math.sin(p.phase) * 0.12) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size * 0.6, 0, Math.PI * 2); ctx.fill();
+      }
+    });
+  }
+
+  function drawLightPool(){
+    if (!player.x) return;
+    var vis = currentVis();
+    var groundY = player.y + (vis.kind === 'flyer' ? 40 : 26);
+    var pulse = 0.85 + Math.sin(elapsed * 0.003) * 0.15;
+    var pool = ctx.createRadialGradient(player.x, groundY, 4, player.x, groundY, 90);
+    pool.addColorStop(0, 'rgba(255,232,180,' + (0.22 * pulse) + ')');
+    pool.addColorStop(1, 'rgba(255,232,180,0)');
+    ctx.fillStyle = pool;
+    ctx.beginPath();
+    ctx.ellipse(player.x, groundY, 90, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  var FIREFLY_COLORS = [
+    'rgba(255,232,150,1)', 'rgba(180,255,160,1)', 'rgba(255,180,120,1)',
+    'rgba(200,140,255,1)', 'rgba(180,220,255,1)', 'rgba(190,120,255,1)'
+  ];
+
+  function drawFireflies(){
+    var color = FIREFLY_COLORS[player.tier] || FIREFLY_COLORS[0];
+    fireflies.forEach(function(f){
+      f.x -= (40 + f.drift) * (1 / 60);
+      f.phase += 0.03;
+      if (f.x < -20) f.x = W + 20;
+      var flicker = 0.4 + Math.sin(f.phase) * 0.35 + Math.sin(f.phase * 2.7) * 0.15;
+      var y = f.y + Math.sin(f.phase * 0.8) * 10;
+      var glow = ctx.createRadialGradient(f.x, y, 0, f.x, y, f.r * 5);
+      glow.addColorStop(0, color.replace('1)', (0.7 * flicker) + ')'));
+      glow.addColorStop(1, color.replace('1)', '0)'));
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(f.x, y, f.r * 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = color.replace('1)', (0.9 * flicker) + ')');
+      ctx.beginPath(); ctx.arc(f.x, y, f.r, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+
+  function drawSky(){
+    var biome = currentBiome();
+    var grad = ctx.createLinearGradient(0, 0, 0, playAreaTop());
+    grad.addColorStop(0, biome.sky[0]);
+    grad.addColorStop(0.55, biome.sky[1]);
+    grad.addColorStop(1, biome.sky[2]);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, playAreaTop());
+
+    var sunX = W * 0.78, sunY = playAreaTop() * 0.42;
+    var glow = ctx.createRadialGradient(sunX, sunY, 4, sunX, sunY, 130);
+    glow.addColorStop(0, biome.sun.replace(/[\d.]+\)$/, '0.5)'));
+    glow.addColorStop(1, biome.sun.replace(/[\d.]+\)$/, '0)'));
+    ctx.fillStyle = glow;
+    ctx.beginPath(); ctx.arc(sunX, sunY, 130, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = biome.sun;
+    ctx.beginPath(); ctx.arc(sunX, sunY, 22, 0, Math.PI * 2); ctx.fill();
+
+    var haze = ctx.createLinearGradient(0, playAreaTop() - 60, 0, playAreaTop());
+    haze.addColorStop(0, 'rgba(240,180,120,0)');
+    haze.addColorStop(1, biome.sun.replace(/[\d.]+\)$/, '0.14)'));
+    ctx.fillStyle = haze;
+    ctx.fillRect(0, playAreaTop() - 60, W, 60);
+
+    drawBiomeName(biome.name);
+  }
+
+  var biomeNameShown = -1;
+  function drawBiomeName(name){
+    if (biomeNameShown !== player.tier && state === 'playing'){
+      biomeNameShown = player.tier;
+      showBiomeToast(name);
+    }
+  }
+  function showBiomeToast(name){
+    var el = document.getElementById('biomeToast');
+    if (!el) return;
+    el.textContent = '📍 ' + name;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+
+  function drawClouds(){
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    clouds.forEach(function(c){
+      ctx.beginPath();
+      ctx.ellipse(c.x, c.y, 40 * c.s, 14 * c.s, 0, 0, Math.PI * 2);
+      ctx.ellipse(c.x + 26 * c.s, c.y + 4 * c.s, 26 * c.s, 11 * c.s, 0, 0, Math.PI * 2);
+      ctx.ellipse(c.x - 24 * c.s, c.y + 5 * c.s, 22 * c.s, 10 * c.s, 0, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  }
+
+  function drawMountains(){
+    var biome = currentBiome();
+    var baseY = playAreaTop() - 6;
+    ctx.fillStyle = biome.ridgeFar;
+    drawRidge(baseY - 70, 0.015, 90);
+    ctx.fillStyle = biome.ridgeNear;
+    drawRidge(baseY - 30, 0.03, 55);
+    drawBiomeDeco(biome.deco, baseY - 30);
+  }
+
+  function drawBiomeDeco(type, baseY){
+    var offset = (elapsed * 0.03) % 220;
+    for (var x = -offset; x < W + 220; x += 110){
+      if (type === 'crystal'){
+        ctx.fillStyle = 'rgba(180,120,255,0.5)';
+        ctx.beginPath();
+        ctx.moveTo(x + 20, baseY); ctx.lineTo(x + 26, baseY - 34); ctx.lineTo(x + 32, baseY);
+        ctx.closePath(); ctx.fill();
+      } else if (type === 'bones'){
+        ctx.strokeStyle = 'rgba(230,220,200,0.35)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x + 15, baseY); ctx.lineTo(x + 15, baseY - 22); ctx.stroke();
+        ctx.beginPath(); ctx.arc(x + 15, baseY - 26, 5, 0, Math.PI * 2); ctx.stroke();
+      } else if (type === 'snow'){
+        ctx.fillStyle = 'rgba(230,240,250,0.4)';
+        ctx.beginPath(); ctx.moveTo(x + 10, baseY); ctx.lineTo(x + 20, baseY - 26); ctx.lineTo(x + 30, baseY);
+        ctx.closePath(); ctx.fill();
+      } else if (type === 'void'){
+        ctx.fillStyle = 'rgba(140,80,220,0.3)';
+        ctx.beginPath(); ctx.arc(x + 20, baseY - 14, 8, 0, Math.PI * 2); ctx.fill();
+      } else if (type === 'ferns'){
+        ctx.strokeStyle = 'rgba(140,190,110,0.4)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(x + 15, baseY); ctx.quadraticCurveTo(x + 25, baseY - 22, x + 12, baseY - 30); ctx.stroke();
+      }
+    }
+  }
+
+  function drawRidge(baseY, speedFactor, amp){
+    var offset = (elapsed * speedFactor) % 220;
+    ctx.beginPath();
+    ctx.moveTo(0, playAreaTop());
+    ctx.lineTo(0, baseY);
+    for (var x = -offset; x < W + 220; x += 110){
+      var h = amp * (0.5 + 0.5 * Math.sin(x * 0.013));
+      ctx.lineTo(x + 55, baseY - h);
+      ctx.lineTo(x + 110, baseY);
+    }
+    ctx.lineTo(W, playAreaTop());
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawGround(){
+    var biome = currentBiome();
+    var top = playAreaTop(), bottom = playAreaBottom();
+    var grad = ctx.createLinearGradient(0, top, 0, bottom + 60);
+    grad.addColorStop(0, biome.ground[0]);
+    grad.addColorStop(0.5, biome.ground[1]);
+    grad.addColorStop(1, biome.ground[2]);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, top, W, H - top);
+
+    // scrolling texture ticks (grass / dirt flecks)
+    ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+    ctx.lineWidth = 2;
+    var spacing = 46;
+    var offset = (elapsed * 0.14) % spacing;
+    for (var x = -offset; x < W + spacing; x += spacing){
+      ctx.beginPath();
+      ctx.moveTo(x, bottom + 8);
+      ctx.lineTo(x - 10, bottom + 22);
+      ctx.stroke();
+    }
+  }
+
+  function drawLanes(){
+    var top = playAreaTop(), bottom = playAreaBottom();
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (var i = 1; i < 3; i++){
+      var y = top + (bottom - top) / 3 * i;
+      ctx.beginPath();
+      ctx.setLineDash([9, 15]);
+      ctx.lineDashOffset = -((elapsed * 0.15) % 24);
+      ctx.moveTo(0, y);
+      ctx.lineTo(W, y);
+      ctx.stroke();
+    }
+    ctx.setLineDash([]);
+  }
+
+  // ---- obstacles (vector) ----
+  function drawObstacles(){
+    obstacles.forEach(function(o){
+      var y = laneY(o.lane);
+      var s = (o.big ? 1.5 : 1) * 30;
+      drawShadow(o.x, y, s * 0.9);
+      ctx.save();
+      ctx.translate(o.x, y);
+      ctx.rotate(o.rot);
+      if (o.type === 'rock') drawRock(s);
+      else if (o.type === 'log') drawLog(s);
+      else drawSpikeCluster(s);
+      ctx.restore();
+    });
+  }
+
+  function drawShadow(x, y, s){
+    ctx.save();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(x, y + s * 0.55, s * 0.6, s * 0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawRock(s){
+    ctx.fillStyle = '#5a5f57';
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.5, s * 0.3);
+    ctx.lineTo(-s * 0.32, -s * 0.35);
+    ctx.lineTo(s * 0.05, -s * 0.5);
+    ctx.lineTo(s * 0.45, -s * 0.1);
+    ctx.lineTo(s * 0.5, s * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.1, -s * 0.42);
+    ctx.lineTo(s * 0.05, -s * 0.5);
+    ctx.lineTo(s * 0.3, -s * 0.15);
+    ctx.lineTo(s * 0.02, -s * 0.2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.5, s * 0.3); ctx.lineTo(-s * 0.32, -s * 0.35);
+    ctx.lineTo(s * 0.05, -s * 0.5); ctx.lineTo(s * 0.45, -s * 0.1);
+    ctx.lineTo(s * 0.5, s * 0.3); ctx.closePath(); ctx.stroke();
+  }
+
+  function drawLog(s){
+    ctx.fillStyle = '#6b4a30';
+    roundedRect(-s * 0.6, -s * 0.28, s * 1.2, s * 0.56, s * 0.22);
+    ctx.fill();
+    ctx.fillStyle = '#8a6440';
+    roundedRect(-s * 0.6, -s * 0.28, s * 0.22, s * 0.56, s * 0.11);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.5;
+    for (var i = -2; i <= 2; i++){
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.35, i * s * 0.08);
+      ctx.lineTo(s * 0.55, i * s * 0.08);
+      ctx.stroke();
+    }
+  }
+
+  function drawSpikeCluster(s){
+    ctx.fillStyle = '#7a7a72';
+    for (var i = -1; i <= 1; i++){
+      ctx.beginPath();
+      ctx.moveTo(i * s * 0.32 - s * 0.14, s * 0.35);
+      ctx.lineTo(i * s * 0.32, -s * 0.5 - Math.abs(i) * s * 0.1);
+      ctx.lineTo(i * s * 0.32 + s * 0.14, s * 0.35);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  function roundedRect(x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---- gems (vector crystal) ----
+  function drawGems(){
+    gems.forEach(function(g){
+      var y = laneY(g.lane) + Math.sin(g.spin) * 6;
+      var pulse = 0.85 + Math.sin(g.spin * 2) * 0.15;
+      ctx.save();
+      ctx.translate(g.x, y);
+
+      if (g.kind === 'token'){
+        var tglow = ctx.createRadialGradient(0, 0, 2, 0, 0, 24);
+        tglow.addColorStop(0, 'rgba(255,215,106,' + (0.5 * pulse) + ')');
+        tglow.addColorStop(1, 'rgba(255,215,106,0)');
+        ctx.fillStyle = tglow;
+        ctx.beginPath(); ctx.arc(0, 0, 24, 0, Math.PI * 2); ctx.fill();
+        ctx.scale(Math.cos(g.spin) * 0.5 + 0.85, 1);
+        ctx.fillStyle = '#ffd76a';
+        ctx.strokeStyle = '#a9781f';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#a9781f';
+        ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('T', 0, 0.5);
+      } else if (g.kind === 'skin'){
+        var sglow = ctx.createRadialGradient(0, 0, 2, 0, 0, 32);
+        sglow.addColorStop(0, g.skin.glow);
+        sglow.addColorStop(1, g.skin.glow.replace(/[\d.]+\)$/, '0)'));
+        ctx.fillStyle = sglow;
+        ctx.beginPath(); ctx.arc(0, 0, 32, 0, Math.PI * 2); ctx.fill();
+        ctx.rotate(g.spin * 0.4);
+        ctx.fillStyle = '#232c26';
+        ctx.strokeStyle = g.skin.glow.replace(/[\d.]+\)$/, '1)');
+        ctx.lineWidth = 2;
+        roundedRect(-11, -11, 22, 22, 4);
+        ctx.fill(); ctx.stroke();
+        ctx.font = '16px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(g.skin.icon, 0, 1);
+      } else {
+        var glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 26);
+        glow.addColorStop(0, 'rgba(90,217,230,' + (0.45 * pulse) + ')');
+        glow.addColorStop(1, 'rgba(90,217,230,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath(); ctx.arc(0, 0, 26, 0, Math.PI * 2); ctx.fill();
+
+        ctx.scale(Math.cos(g.spin) * 0.5 + 0.85, 1);
+        ctx.fillStyle = '#bff3f9';
+        ctx.beginPath();
+        ctx.moveTo(0, -13); ctx.lineTo(9, 0); ctx.lineTo(0, 13); ctx.lineTo(-9, 0);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#5ad9e6';
+        ctx.beginPath();
+        ctx.moveTo(0, -13); ctx.lineTo(4, -2); ctx.lineTo(-4, -2);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    });
+  }
+
+  // ---- player creature (vector) ----
+  var skinCanvas, skinCtx;
+  function ensureSkinCanvas(){
+    if (!skinCanvas){
+      skinCanvas = document.createElement('canvas');
+      skinCtx = skinCanvas.getContext('2d');
+    }
+    if (skinCanvas.width !== W || skinCanvas.height !== H){
+      skinCanvas.width = W;
+      skinCanvas.height = H;
+    }
+  }
+
+  // Draws the creature body onto an offscreen buffer, then tints every
+  // non-transparent pixel with the skin's colors so the silhouette itself
+  // reads as "bone", "poison", etc. — not just an aura/accessory overlay.
+  function drawTintedBody(vis, s, bob, tilt, stretch, squash, skin, baseTransform){
+    ensureSkinCanvas();
+    skinCtx.clearRect(0, 0, W, H);
+    skinCtx.save();
+    skinCtx.translate(player.x, player.y + bob);
+    skinCtx.rotate(tilt);
+    skinCtx.scale(stretch, squash);
+
+    var savedCtx = ctx;
+    ctx = skinCtx;
+    if (vis.kind === 'runner'){
+      drawRunner(s, vis.colors, player.runPhase, vis.opts);
+    } else {
+      drawFlyer(s, vis.colors, player.runPhase, vis.opts, false);
+    }
+    ctx = savedCtx;
+    skinCtx.restore();
+
+    skinCtx.save();
+    skinCtx.globalCompositeOperation = 'source-atop';
+    skinCtx.fillStyle = skin.tint;
+    skinCtx.fillRect(0, 0, W, H);
+    if (skin.tintShade){
+      skinCtx.globalCompositeOperation = 'multiply';
+      skinCtx.fillStyle = skin.tintShade;
+      skinCtx.fillRect(0, 0, W, H);
+    }
+    if (skin.tintGlow){
+      var flicker = 0.6 + Math.sin(performance.now() * 0.006) * 0.4;
+      skinCtx.globalCompositeOperation = 'lighten';
+      skinCtx.globalAlpha = flicker;
+      skinCtx.fillStyle = skin.tintGlow;
+      skinCtx.fillRect(0, 0, W, H);
+    }
+    skinCtx.restore();
+
+    ctx.save();
+    ctx.setTransform(baseTransform);
+    ctx.drawImage(skinCanvas, 0, 0, W, H);
+    ctx.restore();
+  }
+
+  function drawPlayer(){
+    if (!player.x) player.x = W * 0.20;
+    var vis = currentVis();
+    var s = vis.size;
+    var now = performance.now();
+    var invincible = now < player.invincibleUntil;
+    var bob = Math.sin(player.bobPhase) * 4;
+
+    var squash = 1 - player.switchAnim * 0.22;
+    var stretch = 1 + player.switchAnim * 0.16;
+    var tilt = player.switchAnim * player.tiltDir * 0.22;
+
+    drawShadow(player.x, player.y + (vis.kind === 'flyer' ? 34 : 24), s * 0.7);
+
+    ctx.save();
+    ctx.globalAlpha = invincible ? (0.55 + Math.sin(now * 0.02) * 0.4) : 1;
+    var baseTransform = ctx.getTransform();
+    ctx.translate(player.x, player.y + bob);
+    ctx.rotate(tilt);
+    ctx.scale(stretch, squash);
+
+    if (player.flying){
+      ctx.fillStyle = 'rgba(169,204,120,0.12)';
+      ctx.beginPath();
+      ctx.ellipse(0, 34, 30, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    var equippedSkin = skinById(getEquippedSkin());
+    if (equippedSkin){
+      var pulse = 0.82 + Math.sin(now * 0.004) * 0.18;
+      var auraR = s * (1.15 + Math.sin(now * 0.0026) * 0.1);
+      var aura = ctx.createRadialGradient(0, -s * 0.05, s * 0.08, 0, -s * 0.05, auraR);
+      aura.addColorStop(0, equippedSkin.glow.replace(/[\d.]+\)$/, (0.7 * pulse) + ')'));
+      aura.addColorStop(0.55, equippedSkin.glow.replace(/[\d.]+\)$/, (0.28 * pulse) + ')'));
+      aura.addColorStop(1, equippedSkin.glow.replace(/[\d.]+\)$/, '0)'));
+      ctx.fillStyle = aura;
+      ctx.beginPath(); ctx.ellipse(0, -s * 0.05, auraR, auraR * 0.82, 0, 0, Math.PI * 2); ctx.fill();
+      if (equippedSkin.id === 'ghost') ctx.globalAlpha *= 0.62;
+    }
+
+    var seatY;
+    if (vis.kind === 'runner'){
+      seatY = -s * 0.34;
+    } else {
+      seatY = -s * 0.2;
+    }
+
+    if (equippedSkin && equippedSkin.tint){
+      drawTintedBody(vis, s, bob, tilt, stretch, squash, equippedSkin, baseTransform);
+    } else if (vis.kind === 'runner'){
+      drawRunner(s, vis.colors, player.runPhase, vis.opts);
+    } else {
+      drawFlyer(s, vis.colors, player.runPhase, vis.opts, invincible && currentTier().ability === 'inferno');
+    }
+
+    if (equippedSkin) drawSkinAccessory(s, equippedSkin, player.runPhase, seatY);
+
+    drawSaddle(s, seatY);
+    drawRider(s, player.runPhase, seatY, vis.kind === 'flyer');
+
+    ctx.restore();
+  }
+
+  function drawSkinAccessory(s, skin, phase, seatY){
+    var now = performance.now();
+    if (skin.accessory === 'hat'){
+      ctx.save();
+      ctx.shadowColor = 'rgba(150,90,220,0.8)'; ctx.shadowBlur = s * 0.12;
+      ctx.fillStyle = '#2a1a3a';
+      ctx.strokeStyle = '#a06cf5'; ctx.lineWidth = s * 0.022;
+      ctx.beginPath();
+      ctx.moveTo(s * 0.36, seatY + s * 0.06);
+      ctx.lineTo(s * 0.46, seatY - s * 0.36);
+      ctx.lineTo(s * 0.56, seatY + s * 0.06);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(s * 0.46, seatY + s * 0.06, s * 0.15, s * 0.038, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+      var swirl = (Math.sin(now * 0.003) * 0.5 + 0.5);
+      ctx.fillStyle = 'rgba(177,123,255,' + (0.5 + swirl * 0.3) + ')';
+      ctx.beginPath(); ctx.arc(s * 0.46, seatY - s * 0.38, s * 0.03 + swirl * s * 0.015, 0, Math.PI * 2); ctx.fill();
+    } else if (skin.accessory === 'drip'){
+      var t = phase * 0.6;
+      for (var i = 0; i < 4; i++){
+        var dy = ((t + i * 1.4) % 2.2) * s * 0.32;
+        var fade = 1 - (dy / (s * 0.7));
+        ctx.fillStyle = 'rgba(107,239,120,' + (0.65 * Math.max(0, fade)) + ')';
+        ctx.beginPath();
+        ctx.arc(-s * 0.12 + i * s * 0.15, s * 0.14 + dy, s * 0.028, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (skin.accessory === 'spark'){
+      var flick = Math.sin(now * 0.02) > 0.15;
+      if (flick){
+        ctx.save();
+        ctx.shadowColor = 'rgba(127,202,255,0.9)'; ctx.shadowBlur = s * 0.1;
+        ctx.strokeStyle = 'rgba(180,225,255,0.9)'; ctx.lineWidth = s * 0.028;
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.22, -s * 0.22); ctx.lineTo(-s * 0.11, -s * 0.06); ctx.lineTo(-s * 0.2, -s * 0.02); ctx.lineTo(-s * 0.02, s * 0.18);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(s * 0.16, -s * 0.14); ctx.lineTo(s * 0.24, -s * 0.02); ctx.lineTo(s * 0.15, s * 0.02);
+        ctx.stroke();
+        ctx.restore();
+      }
+    } else if (skin.accessory === 'ribs'){
+      ctx.save();
+      ctx.shadowColor = 'rgba(242,234,210,0.6)'; ctx.shadowBlur = s * 0.06;
+      ctx.strokeStyle = 'rgba(242,234,210,0.75)'; ctx.lineWidth = s * 0.022;
+      for (var r = 0; r < 3; r++){
+        ctx.beginPath();
+        ctx.arc(-s * 0.02, s * 0.06, s * (0.14 + r * 0.06), -0.5, 0.5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (skin.accessory === 'patch'){
+      ctx.fillStyle = 'rgba(159,206,94,0.55)';
+      ctx.beginPath(); ctx.ellipse(-s * 0.1, -s * 0.02, s * 0.09, s * 0.06, 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(s * 0.05, s * 0.08, s * 0.07, s * 0.05, -0.2, 0, Math.PI * 2); ctx.fill();
+      var ooze = (Math.sin(now * 0.004 + 1) * 0.5 + 0.5) * s * 0.1;
+      ctx.fillStyle = 'rgba(159,206,94,0.4)';
+      ctx.beginPath(); ctx.arc(-s * 0.1, s * 0.05 + ooze, s * 0.02, 0, Math.PI * 2); ctx.fill();
+    } else if (skin.accessory === 'ghost'){
+      for (var w = 0; w < 3; w++){
+        var wp = now * 0.0022 + w * 2.1;
+        var wx = Math.sin(wp) * s * (0.45 + w * 0.1);
+        var wy = Math.cos(wp * 1.3) * s * 0.28 - s * 0.05;
+        var wr = s * (0.05 + Math.sin(wp * 2) * 0.015);
+        ctx.fillStyle = 'rgba(228,244,255,' + (0.35 + Math.sin(wp * 1.7) * 0.15) + ')';
+        ctx.beginPath(); ctx.arc(wx, wy, Math.max(1, wr), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  // ---- two-segment leg with a knee bend, for a much more natural run cycle ----
+  function drawLegSeg(hipX, hipY, phase, s, color, front){
+    var thigh = s * 0.2, shin = s * 0.19;
+    var swing = Math.sin(phase) * (front ? 0.65 : -0.65);
+    var kneeBend = Math.max(0.15, Math.cos(phase) * 0.55 + 0.55);
+
+    ctx.save();
+    ctx.translate(hipX, hipY);
+    ctx.rotate(swing * 0.6);
+    ctx.fillStyle = color;
+    ctx.strokeStyle = shade(color, -30);
+    ctx.lineWidth = s * 0.02;
+    roundedRect(-s * 0.048, 0, s * 0.096, thigh, s * 0.04);
+    ctx.fill(); ctx.stroke();
+
+    ctx.translate(0, thigh * 0.94);
+    ctx.rotate(-swing * kneeBend);
+    roundedRect(-s * 0.04, 0, s * 0.08, shin, s * 0.035);
+    ctx.fill(); ctx.stroke();
+
+    // little foot
+    ctx.beginPath();
+    ctx.ellipse(0, shin, s * 0.06, s * 0.03, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawRunner(s, colors, phase, opts){
+    var outline = shade(colors.body, -35);
+
+    // back leg (far side, slightly dimmer/behind)
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    drawLegSeg(-s * 0.15, s * 0.1, phase + Math.PI, s, shade(colors.accent, -12), false);
+    ctx.restore();
+
+    // tail
+    ctx.fillStyle = colors.body;
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = s * 0.025;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.32, -s * 0.02);
+    ctx.quadraticCurveTo(-s * 0.78, s * 0.02 + Math.sin(phase * 0.8) * s * 0.1, -s * 0.9, -s * 0.18 + Math.sin(phase * 0.8) * s * 0.1);
+    ctx.quadraticCurveTo(-s * 0.55, -s * 0.08, -s * 0.32, -s * 0.16);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+
+    // body
+    var bodyGrad = ctx.createLinearGradient(-s * 0.3, -s * 0.3, s * 0.2, s * 0.2);
+    bodyGrad.addColorStop(0, shade(colors.body, 14));
+    bodyGrad.addColorStop(0.55, colors.body);
+    bodyGrad.addColorStop(1, shade(colors.body, -18));
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = s * 0.03;
+    ctx.beginPath();
+    ctx.ellipse(0, -s * 0.04, s * (opts.bulk ? 0.52 : 0.42), s * (opts.bulk ? 0.34 : 0.28), 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    // belly
+    ctx.fillStyle = colors.belly;
+    ctx.beginPath();
+    ctx.ellipse(0, s * 0.1, s * 0.3, s * 0.13, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // front leg (in front of body)
+    drawLegSeg(s * 0.15, s * 0.1, phase, s, colors.accent, true);
+
+    // head
+    ctx.fillStyle = colors.body;
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = s * 0.025;
+    ctx.beginPath();
+    ctx.ellipse(s * 0.42, -s * 0.24, s * 0.22, s * 0.19, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    // snout
+    ctx.beginPath();
+    ctx.ellipse(s * 0.6, -s * 0.16, s * 0.13, s * 0.09, -0.15, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    // eye
+    ctx.fillStyle = '#181818';
+    ctx.beginPath();
+    ctx.arc(s * 0.5, -s * 0.28, s * 0.035, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath();
+    ctx.arc(s * 0.508, -s * 0.288, s * 0.012, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (opts.spikes){
+      ctx.fillStyle = colors.accent;
+      for (var i = 0; i < 3; i++){
+        var px = -s * 0.08 + i * s * 0.15;
+        ctx.beginPath();
+        ctx.moveTo(px, -s * 0.28); ctx.lineTo(px + s * 0.05, -s * 0.44); ctx.lineTo(px + s * 0.11, -s * 0.28);
+        ctx.closePath(); ctx.fill();
+      }
+    }
+    if (opts.ears){
+      ctx.fillStyle = colors.accent;
+      ctx.beginPath();
+      ctx.moveTo(s * 0.3, -s * 0.4); ctx.lineTo(s * 0.38, -s * 0.58); ctx.lineTo(s * 0.46, -s * 0.38);
+      ctx.closePath(); ctx.fill();
+    }
+    if (opts.horn){
+      var hornGrad = ctx.createLinearGradient(s * 0.62, 0, s * 0.92, 0);
+      hornGrad.addColorStop(0, '#efe7d8');
+      hornGrad.addColorStop(1, '#c9bda2');
+      ctx.fillStyle = hornGrad;
+      ctx.beginPath();
+      ctx.moveTo(s * 0.62, -s * 0.2); ctx.lineTo(s * 0.92, -s * 0.3); ctx.lineTo(s * 0.62, -s * 0.08);
+      ctx.closePath(); ctx.fill();
+    }
+    if (opts.stripes){
+      ctx.strokeStyle = colors.accent;
+      ctx.lineWidth = s * 0.045;
+      for (var j = 0; j < 3; j++){
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.18 + j * s * 0.16, -s * 0.26);
+        ctx.lineTo(-s * 0.26 + j * s * 0.16, s * 0.08);
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawFlyer(s, colors, phase, opts, breathing){
+    var flap = Math.sin(phase * 2.2) * 0.7;
+    var outline = shade(colors.body, -35);
+
+    drawWingLayer(-s * 0.02, 0, s * 0.62, flap, -1, colors.accent, s);
+
+    var bodyGrad = ctx.createLinearGradient(-s * 0.2, -s * 0.2, s * 0.2, s * 0.2);
+    bodyGrad.addColorStop(0, shade(colors.body, 12));
+    bodyGrad.addColorStop(1, shade(colors.body, -18));
+    ctx.fillStyle = bodyGrad;
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = s * 0.028;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 0.34, s * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+
+    drawWingLayer(-s * 0.02, 0, s * 0.62, -flap, 1, colors.accent, s);
+
+    ctx.fillStyle = colors.body;
+    ctx.strokeStyle = outline;
+    ctx.lineWidth = s * 0.022;
+    ctx.beginPath();
+    ctx.ellipse(s * 0.32, -s * 0.08, s * 0.17, s * 0.14, 0, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(s * 0.44, -s * 0.08); ctx.lineTo(s * 0.64, -s * 0.04); ctx.lineTo(s * 0.44, s * 0.02);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#181818';
+    ctx.beginPath(); ctx.arc(s * 0.36, -s * 0.12, s * 0.032, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.8)';
+    ctx.beginPath(); ctx.arc(s * 0.367, -s * 0.128, s * 0.011, 0, Math.PI * 2); ctx.fill();
+
+    if (opts.crest){
+      ctx.fillStyle = colors.accent;
+      ctx.beginPath();
+      ctx.moveTo(s * 0.2, -s * 0.2); ctx.lineTo(s * 0.28, -s * 0.42); ctx.lineTo(s * 0.35, -s * 0.18);
+      ctx.closePath(); ctx.fill();
+    }
+
+    if (breathing){
+      var t = performance.now() * 0.02;
+      ctx.save();
+      ctx.translate(s * 0.6, -s * 0.02);
+      for (var i = 0; i < 3; i++){
+        var flick = Math.sin(t + i) * 6;
+        var grad = ctx.createLinearGradient(0, 0, s * 0.8, flick);
+        grad.addColorStop(0, 'rgba(240,149,74,0.85)');
+        grad.addColorStop(1, 'rgba(240,149,74,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(0, -6 + i * 3);
+        ctx.quadraticCurveTo(s * 0.4, flick, s * 0.85, flick * 0.5);
+        ctx.lineTo(s * 0.8, flick * 0.5 + 8);
+        ctx.quadraticCurveTo(s * 0.4, flick + 8, 0, 6 + i * 3);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  // layered wing: 2 overlapping feather shapes for depth instead of one flat triangle
+  function drawWingLayer(x, y, len, angle, dir, color, s){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-angle * dir);
+    ctx.fillStyle = shade(color, -14);
+    drawWing(0, 0, len * 0.82, 0, 1);
+    ctx.fillStyle = color;
+    drawWing(0, 0, len, 0, 1);
+    ctx.strokeStyle = shade(color, -30);
+    ctx.lineWidth = s * 0.02;
+    drawWingOutline(len);
+    ctx.restore();
+  }
+
+  function drawWing(x, y, len, angle, dir){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-angle * dir);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(len * 0.4, -len * 0.5 * dir, len, -len * 0.08 * dir);
+    ctx.quadraticCurveTo(len * 0.5, len * 0.18 * dir, 0, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawWingOutline(len){
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(len * 0.4, -len * 0.5, len, -len * 0.08);
+    ctx.quadraticCurveTo(len * 0.5, len * 0.18, 0, 0);
+    ctx.closePath();
+    ctx.stroke();
+  }
+
+  // ---- saddle + rider, drawn on top of the mount in the same local space ----
+  function drawSaddle(s, seatY){
+    ctx.save();
+    ctx.translate(0, seatY);
+
+    ctx.fillStyle = '#6b4a30';
+    ctx.strokeStyle = '#3f2c1c';
+    ctx.lineWidth = s * 0.02;
+    roundedRect(-s * 0.24, -s * 0.03, s * 0.46, s * 0.13, s * 0.05);
+    ctx.fill(); ctx.stroke();
+
+    // pommel + cantle
+    ctx.fillStyle = '#5a3d26';
+    ctx.beginPath(); ctx.ellipse(s * 0.19, -s * 0.01, s * 0.05, s * 0.085, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-s * 0.2, -s * 0.01, s * 0.05, s * 0.085, 0, 0, Math.PI * 2); ctx.fill();
+
+    // girth strap down the side
+    ctx.strokeStyle = '#3f2c1c';
+    ctx.lineWidth = s * 0.025;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.04, s * 0.08);
+    ctx.lineTo(-s * 0.01, s * 0.34);
+    ctx.stroke();
+
+    // stitching highlight
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = s * 0.012;
+    ctx.beginPath(); ctx.moveTo(-s * 0.2, -s * 0.005); ctx.lineTo(s * 0.2, -s * 0.005); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawCapsule(x, y, w, len, angle){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    roundedRect(-w / 2, 0, w, len, w / 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawRider(s, phase, seatY, isFlyer){
+    var lean = isFlyer ? -0.16 : Math.sin(phase) * 0.04;
+    var bob = Math.sin(phase * 2) * s * 0.012;
+
+    ctx.save();
+    ctx.translate(-s * 0.01, seatY - s * 0.02 + bob);
+    ctx.rotate(lean);
+
+    // cape flutter for flyer tiers, drawn first so it sits behind the body
+    if (isFlyer){
+      ctx.fillStyle = 'rgba(70,50,34,0.88)';
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.06, -s * 0.1);
+      ctx.quadraticCurveTo(-s * 0.4, -s * 0.02 + Math.sin(phase * 3) * s * 0.05, -s * 0.56, s * 0.08 + Math.sin(phase * 3) * s * 0.09);
+      ctx.quadraticCurveTo(-s * 0.24, s * 0.02, -s * 0.06, s * 0.02);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // far leg (dimmer, behind torso)
+    ctx.fillStyle = '#3a2f26';
+    drawCapsule(-s * 0.015, s * 0.14, s * 0.055, s * 0.24, 0.4);
+
+    // torso (survivor jacket)
+    var torsoGrad = ctx.createLinearGradient(0, -s * 0.2, 0, s * 0.08);
+    torsoGrad.addColorStop(0, '#8a9a71');
+    torsoGrad.addColorStop(1, '#5c6a49');
+    ctx.fillStyle = torsoGrad;
+    ctx.strokeStyle = '#3c4630';
+    ctx.lineWidth = s * 0.016;
+    roundedRect(-s * 0.1, -s * 0.19, s * 0.2, s * 0.29, s * 0.08);
+    ctx.fill(); ctx.stroke();
+
+    // belt
+    ctx.fillStyle = '#2e2318';
+    ctx.fillRect(-s * 0.1, s * 0.04, s * 0.2, s * 0.03);
+
+    // small pack on back
+    ctx.fillStyle = '#4a3b28';
+    roundedRect(-s * 0.17, -s * 0.1, s * 0.08, s * 0.14, s * 0.03);
+    ctx.fill();
+
+    // arm reaching to reins
+    ctx.strokeStyle = '#6d7c56';
+    ctx.lineWidth = s * 0.045;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(s * 0.06, -s * 0.08);
+    ctx.quadraticCurveTo(s * 0.26, -s * 0.02, s * 0.34, s * 0.05);
+    ctx.stroke();
+    // rein line to the mount's head
+    ctx.strokeStyle = 'rgba(60,45,30,0.7)';
+    ctx.lineWidth = s * 0.012;
+    ctx.beginPath();
+    ctx.moveTo(s * 0.34, s * 0.05);
+    ctx.lineTo(s * 0.7, seatY * -0.55);
+    ctx.stroke();
+
+    // near leg (in front, gripping the saddle)
+    ctx.fillStyle = '#241c15';
+    drawCapsule(s * 0.02, s * 0.14, s * 0.06, s * 0.26, -0.3);
+
+    // head
+    ctx.fillStyle = '#c99b74';
+    ctx.strokeStyle = '#8a6b4e';
+    ctx.lineWidth = s * 0.012;
+    ctx.beginPath(); ctx.arc(0, -s * 0.29, s * 0.1, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // hair
+    ctx.fillStyle = '#3a2a1a';
+    ctx.beginPath(); ctx.arc(0, -s * 0.33, s * 0.105, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
+    // headband
+    ctx.fillStyle = '#8a6b2f';
+    ctx.fillRect(-s * 0.09, -s * 0.31, s * 0.18, s * 0.03);
+
+    ctx.restore();
+  }
+
+  function shade(hex, amt){
+    var c = hex.replace('#', '');
+    var num = parseInt(c, 16);
+    var r = Math.max(0, Math.min(255, (num >> 16) + amt));
+    var g = Math.max(0, Math.min(255, ((num >> 8) & 0xff) + amt));
+    var b = Math.max(0, Math.min(255, (num & 0xff) + amt));
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+
+  function drawParticles(){
+    particles.forEach(function(p){
+      var alpha = 1 - (p.age / p.life);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, alpha);
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r || 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
+  }
+
+  function drawSpeedLines(){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 2;
+    for (var i = 0; i < 6; i++){
+      var y = playAreaTop() + Math.random() * (playAreaBottom() - playAreaTop());
+      var len = 60 + Math.random() * 100;
+      var x = Math.random() * W;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - len, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // ================= LOOP =================
+  function loop(time){
+    if (!lastTime) lastTime = time;
+    var dt = Math.min(48, time - lastTime);
+    lastTime = time;
+    if (state === 'playing') update(dt);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ================= FLOW =================
+  function startGame(){
+    ensureAudio();
+    sfxButton();
+    resetGame();
+    player.x = W * 0.20;
+    player.y = laneY(1);
+    document.getElementById('startOverlay').classList.add('hidden');
+    document.getElementById('gameOverOverlay').classList.add('hidden');
+    state = 'playing';
+  }
+
+  function endGame(){
+    state = 'gameover';
+    sfxGameOver();
+    var best = getBest();
+    var finalScore = Math.floor(window.score);
+    var isNew = finalScore > best;
+    if (isNew){ best = finalScore; setBest(best); }
+
+    document.getElementById('finalEmoji').textContent = currentTier().emoji;
+    document.getElementById('finalTierBig').textContent = currentTier().name;
+    document.getElementById('finalScore').textContent = finalScore;
+    var bestEl = document.getElementById('bestScore');
+    bestEl.textContent = best;
+    bestEl.className = isNew ? 'new-best' : '';
+    document.getElementById('gameOverOverlay').classList.remove('hidden');
+  }
+
+  resizeCanvas();
+  resetGame();
+  player.x = W * 0.20;
+  player.y = laneY(1);
+  requestAnimationFrame(loop);
+</script>
+
+</body>
+</html>
